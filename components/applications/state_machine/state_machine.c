@@ -3,6 +3,8 @@
 #include <stddef.h>
 #include "raven_log.h"
 #include "raven_comm.h"
+#include "rgb_led.h"
+#include "colors.h"
 
 // MACROS
 #define ADD_STATE(state)                    \
@@ -36,14 +38,17 @@ const uint8_t *state_get_name() { return state_machine.name; }
 // Initialization
 static void *state_initialization(void *args) {
     raven_comm_init();
-
+    rgb_led_init();
+    
     CHANGE_STATE(state_test);
     return NULL;
 }
 
 // Test
 static void *state_test(void *args) {
-    raven_comm_send_message("TEST", "Hello World!");
+    rgb_led_set_color(0, COLOR_PURPLE);
+    rgb_led_set_all_colors(COLOR_PURPLE);
+    rgb_led_show();
     vTaskDelay(pdMS_TO_TICKS(1000));
 
     return NULL;
