@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include "raven_log.h"
 #include "raven_comm.h"
+#include "peripheral_validation.h"
 #include "rgb_led.h"
 #include "colors.h"
 
@@ -20,6 +21,7 @@ typedef void *(*state_callback)(void *);
 // AVAILABLE STATES
 ADD_STATE(initialization);
 ADD_STATE(test);
+ADD_STATE(validation);
 
 // STATE CREATION
 static struct {
@@ -46,10 +48,14 @@ static void *state_initialization(void *args) {
 
 // Test
 static void *state_test(void *args) {
-    rgb_led_set_color(0, COLOR_PURPLE);
-    rgb_led_set_all_colors(COLOR_PURPLE);
-    rgb_led_show();
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    CHANGE_STATE(state_validation);
 
+    return NULL;
+}
+
+// Validation
+static void *state_validation(void *args) {
+    peripheral_validation(PERIPHERAL_RGB_LED);
+    
     return NULL;
 }

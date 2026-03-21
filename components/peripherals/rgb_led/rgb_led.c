@@ -8,6 +8,7 @@
 #include "led_strip_encoder.h"
 #include "raven_log.h"
 #include "raven_comm.h"
+#include "colors.h"
 
 #define TAG "LEDS"
 static bool initialized = false;
@@ -98,4 +99,9 @@ void rgb_led_clear() {
     }   
 
     memset(led_pixels, 0, sizeof(led_pixels)); 
+}
+
+void rgb_led_peripheral_validation(void) {
+    rgb_led_set_all_colors(COLOR_PURPLE);
+    rgb_led_show();
 }
