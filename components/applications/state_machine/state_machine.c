@@ -89,7 +89,7 @@ static void *state_initialization(void *args) {
     rgb_led_init();
     buzzer_init();
 
-    CHANGE_STATE(state_test);
+    CHANGE_STATE(state_configuration);
     return NULL;
 }
 
