@@ -10,6 +10,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <stdbool.h>
 
 /* ========================================================================== */
 /* MACROS                                                                     */
@@ -29,8 +30,11 @@
  * from the external controller (e.g., 'V' for CMD_VALIDATION).
  */
 typedef enum {
-    CMD_UNKNOWN = 0,    /**< Unrecognized command header. */
-    CMD_VALIDATION      /**< Hardware or peripheral validation command (Header: 'V'). */
+    CMD_UNKNOWN = 0,     /**< Unrecognized command header. */
+    CMD_VALIDATION,      /**< Hardware or peripheral validation command (Header: 'V'). */
+    CMD_STATE_MACHINE,   /**< State Machine command (Header: 'S'). */
+
+    CMD_MAX
 } robot_cmd_type_t;
 
 /**
@@ -48,6 +52,6 @@ typedef struct {
 /* ========================================================================== */
 /* PUBLIC API                                                                 */
 /* ========================================================================== */
-
 void raven_comm_init(void);
 void raven_comm_send_message(const char *tag, const char *format, ...);
+bool raven_comm_check_new_message(robot_cmd_type_t cmd_type, char *out_payload);

@@ -1,7 +1,8 @@
 /**
  * @file raven_comm.c
  * @brief High-level communication manager for the robot.
- * * This module acts as the application-level wrapper for telemetry and data transmission.
+ *
+ * This module acts as the application-level wrapper for telemetry and data transmission.
  * It formats outgoing messages with a specific TAG, appends carriage return and line 
  * feed (\r\n) characters, and routes them to the underlying BLE manager.
  * It also manages an independent FreeRTOS task to decode incoming BLE commands 
@@ -29,12 +30,25 @@
 #define TAG "CMM"
 static bool initialized = false;
 
-// Queue to safely pass data from the BLE ISR/Callback to the Decoder Task
+/** @brief Queue to safely pass data from the BLE ISR/Callback to the Decoder Task */
 QueueHandle_t robot_command_queue = NULL;
 
-// Handle for the decoder task
+/** @brief Handle for the decoder task */
 static TaskHandle_t comm_decoder_task_handle = NULL;
 
+/**
+ * @brief Internal structure representing a single mailbox for a specific command type.
+ */
+typedef struct {
+    char payload[RAVEN_COMM_MAX_PAYLOAD_LEN]; /**< Buffer storing the command payload */
+    bool has_new;                             /**< Flag indicating an unread message */
+} comm_mailbox_t;
+
+/** @brief Array of mailboxes, one for each command type defined in robot_cmd_type_t */
+static comm_mailbox_t mailboxes[CMD_MAX] = {0};
+
+/** @brief Spinlock to prevent memory corruption if reading and writing happen simultaneously */
+static portMUX_TYPE mailbox_spinlock = portMUX_INITIALIZER_UNLOCKED;
 
 /* ========================================================================== */
 /* PRIVATE FUNCTIONS                                                          */
@@ -42,9 +56,11 @@ static TaskHandle_t comm_decoder_task_handle = NULL;
 
 /**
  * @brief Callback triggered by the BLE manager when data is received from the app.
- * * Extracts the command header, strips carriage returns and line feeds from the 
+ *
+ * Extracts the command header, strips carriage returns and line feeds from the 
  * payload, and safely dispatches the structured command to the FreeRTOS queue.
- * * @param data Pointer to the raw byte array received via BLE.
+ *
+ * @param data Pointer to the raw byte array received via BLE.
  * @param len  Length of the received data array.
  */
 static void receive_message_cb(uint8_t *data, uint16_t len) {
@@ -90,25 +106,28 @@ static void receive_message_cb(uint8_t *data, uint16_t len) {
 }
 
 /**
- * @brief Dedicated FreeRTOS task for decoding and routing received commands.
- * * By running in a separate task and blocking indefinitely on the queue, 
- * this function consumes 0% CPU until a message arrives, ensuring the main 
- * PID/Sensor state machine remains completely unaffected and runs in constant time.
- * * @param pvParameters Standard FreeRTOS task parameter (unused).
+ * @brief FreeRTOS task that continuously processes incoming robot commands.
+ *
+ * Blocks indefinitely waiting for new messages on the `robot_command_queue`.
+ * When a valid message is received, it safely stores the payload into the appropriate
+ * mailbox using a critical section to prevent race conditions with reading modules.
+ *
+ * @param pvParameters Pointer to task parameters (unused).
  */
 static void raven_comm_decoder_task(void *pvParameters) {
     robot_command_t received_cmd;
 
     for (;;) {
-        // Blocks indefinitely (portMAX_DELAY) until a message arrives in the queue.
         if (xQueueReceive(robot_command_queue, &received_cmd, portMAX_DELAY) == pdTRUE) {
-            switch (received_cmd.type) {
-                case CMD_VALIDATION:
-                    peripheral_validation_set_command(received_cmd.payload);
-                    break;
-
-                default:
-                    break;
+            // Protect against unknown/out-of-bounds commands
+            if (received_cmd.type > CMD_UNKNOWN && received_cmd.type < CMD_MAX) {
+                
+                // ENTER CRITICAL SECTION: Quickly save the message to the correct mailbox
+                taskENTER_CRITICAL(&mailbox_spinlock);
+                strncpy(mailboxes[received_cmd.type].payload, received_cmd.payload, RAVEN_COMM_MAX_PAYLOAD_LEN);
+                mailboxes[received_cmd.type].has_new = true;
+                taskEXIT_CRITICAL(&mailbox_spinlock);
+                
             }
         }
     }
@@ -121,7 +140,8 @@ static void raven_comm_decoder_task(void *pvParameters) {
 
 /**
  * @brief Initializes the high-level communication module.
- * * Sets up the underlying Bluetooth Low Energy (BLE) manager, creates the 
+ *
+ * Sets up the underlying Bluetooth Low Energy (BLE) manager, creates the 
  * internal message queue, and spawns the dedicated decoder task.
  * Safely ignores repeated calls.
  */
@@ -156,10 +176,12 @@ void raven_comm_init(void) {
 
 /**
  * @brief Formats and sends a tagged telemetry message over BLE.
- * * This function behaves similarly to `printf`. It safely combines the provided 
+ *
+ * This function behaves similarly to `printf`. It safely combines the provided 
  * TAG and formatted string, appends `\r\n`, and transmits it. Includes buffer 
  * overflow protection to prevent system crashes.
- * * @param tag    A short string identifying the source (e.g., "BATTERY", "PID").
+ *
+ * @param tag    A short string identifying the source (e.g., "BATTERY", "PID").
  * @param format The C-style format string.
  * @param ...    Variable arguments matching the format specifiers.
  */
@@ -197,4 +219,31 @@ void raven_comm_send_message(const char *tag, const char *format, ...) {
         
         ble_manager_send_message((uint8_t *)buffer, (uint16_t)total_len);
     }
+}
+
+/**
+ * @brief Checks if a new message is available for a specific command category.
+ *
+ * Reads the internal mailbox associated with the provided command type.
+ * If a new message exists, it copies the payload to the output buffer and
+ * lowers the 'new message' flag. This read operation is protected by a spinlock.
+ *
+ * @param cmd_type    The target command category to check (e.g., CMD_VALIDATION).
+ * @param out_payload Buffer where the payload will be copied if a message exists.
+ * @return true if a new message was retrieved, false otherwise.
+ */
+bool raven_comm_check_new_message(robot_cmd_type_t cmd_type, char *out_payload) {
+    if (cmd_type <= CMD_UNKNOWN || cmd_type >= CMD_MAX || out_payload == NULL) return false;
+    bool is_new = false;
+
+    // ENTER CRITICAL SECTION: Read and clear the mailbox safely
+    taskENTER_CRITICAL(&mailbox_spinlock);
+    if (mailboxes[cmd_type].has_new) {
+        strncpy(out_payload, mailboxes[cmd_type].payload, RAVEN_COMM_MAX_PAYLOAD_LEN);
+        mailboxes[cmd_type].has_new = false;
+        is_new = true;
+    }
+    taskEXIT_CRITICAL(&mailbox_spinlock);
+
+    return is_new;
 }

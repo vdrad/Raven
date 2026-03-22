@@ -15,16 +15,6 @@
 #define TAG "VLD"
 
 /* ========================================================================== */
-/* PRIVATE MODULE VARIABLES                                                   */
-/* ========================================================================== */
-
-// Static buffer to store the last command received from the communication task
-static char current_payload[RAVEN_COMM_MAX_PAYLOAD_LEN] = {0};
-
-// Flag indicating a new command is available
-static volatile bool has_new_command = false;
-
-/* ========================================================================== */
 /* INTERNAL STRUCTURES                                                        */
 /* ========================================================================== */
 
@@ -42,47 +32,15 @@ typedef struct {
 /* ========================================================================== */
 
 static void validate_all_peripherals(void);
-static bool peripheral_validation_get_command(char *out_buffer);
 
 /* ========================================================================== */
 /* FUNCTION IMPLEMENTATIONS                                                   */
 /* ========================================================================== */
 
 /**
- * @brief Receives the payload from the communication module and stores it locally.
- * * This function is called by the decoder task in raven_comm.
- * * @param payload The null-terminated string received via BLE.
- */
-void peripheral_validation_set_command(const char *payload) {
-    if (payload == NULL) return;
-
-    // Copies the payload safely and raises the new command flag
-    strncpy(current_payload, payload, RAVEN_COMM_MAX_PAYLOAD_LEN - 1);
-    current_payload[RAVEN_COMM_MAX_PAYLOAD_LEN - 1] = '\0';
-    has_new_command = true; 
-}
-
-/**
- * @brief Reads the stored command and clears the new command flag.
- * * @param out_buffer Pointer to a character array where the payload will be copied.
- * @return true if a new command was read, false otherwise.
- */
-static bool peripheral_validation_get_command(char *out_buffer) {
-    if (!has_new_command) {
-        return false;
-    }
-
-    // Copies the saved command and resets the local buffer
-    strncpy(out_buffer, current_payload, RAVEN_COMM_MAX_PAYLOAD_LEN);
-    memset(current_payload, 0, RAVEN_COMM_MAX_PAYLOAD_LEN);
-    has_new_command = false;
-
-    return true;
-}
-
-/**
  * @brief Main routing function for peripheral validation.
- * * @param peripheral The specific peripheral or group to validate.
+ *
+ * @param peripheral The specific peripheral or group to validate.
  */
 void peripheral_validation(peripheral_to_validate_t peripheral) {
     switch (peripheral) {
@@ -101,25 +59,40 @@ void peripheral_validation(peripheral_to_validate_t peripheral) {
             break;
     }
 }
+
 /**
  * @brief Validates all peripherals sequentially, waiting for app confirmation.
- * * This function blocks execution until a 'VOK' command is received, then 
- * iterates through a suite of tests, waiting for 'VPASS' or 'VFAIL' for each.
- * Finally, it generates a comprehensive validation report via the log system.
+ *
+ * This function blocks execution until a 'VOK' command is received, then 
+ * iterates through a suite of tests, waiting for 'VPASS', 'VFAIL', or 'VABORT' 
+ * for each. Finally, it generates a comprehensive validation report.
  */
 static void validate_all_peripherals(void) {
-    raven_comm_send_message(TAG, "========= COMPLETE PERIPHERAL VALIDATION =========");
-    raven_comm_send_message(TAG, "Send 'VOK' to start the process.");
+    // 1. Define the Test Suite using an array of structs
+    peripheral_test_t test_suite[] = {
+        {"RGB LED", rgb_led_peripheral_validation, false},
+        {"BUZZER",  buzzer_peripheral_validation,  false}
+        // To add a new device, just add one line here! e.g., {"Infrared", ir_validate, false}
+    };
     
+    uint8_t num_tests = sizeof(test_suite) / sizeof(test_suite[0]);
+    uint8_t passed_count = 0;
+    uint8_t failed_count = 0;
     char received_cmd[RAVEN_COMM_MAX_PAYLOAD_LEN];
     bool start_validation = false;
 
-    // 1. Wait for the initial "OK"
+    raven_comm_send_message(TAG, "========= COMPLETE PERIPHERAL VALIDATION =========");
+    raven_comm_send_message(TAG, "Send 'VOK' to start the process.");
+    
+    // 2. Wait for the initial "OK" or "ABORT"
     while (!start_validation) {
-        if (peripheral_validation_get_command(received_cmd)) {
+        if (raven_comm_check_new_message(CMD_VALIDATION, received_cmd)) {
             if (strcmp(received_cmd, "OK") == 0) {
                 raven_comm_send_message(TAG, "'VOK' command accepted! Starting test suite...");
                 start_validation = true; 
+            } else if (strcmp(received_cmd, "ABORT") == 0) {
+                raven_comm_send_message(TAG, "Validation aborted by user before starting.");
+                return; // Exits the function completely
             } else {
                 raven_comm_send_message(TAG, "Expected 'VOK', but received 'V%s'.", received_cmd);
             }
@@ -127,22 +100,11 @@ static void validate_all_peripherals(void) {
         vTaskDelay(pdMS_TO_TICKS(100)); // Yield to the OS
     }
 
-    // 2. Define the Test Suite using an array of structs
-    peripheral_test_t test_suite[] = {
-        {"RGB LED", rgb_led_peripheral_validation, false},
-        {"Buzzer",  buzzer_peripheral_validation,  false}
-        // To add a new device, just add one line here! e.g., {"Infrared", ir_validate, false}
-    };
-    
-    uint8_t num_tests = sizeof(test_suite) / sizeof(test_suite[0]);
-    uint8_t passed_count = 0;
-    uint8_t failed_count = 0;
-
     // 3. Sequential Validation Loop
     for (uint8_t i = 0; i < num_tests; i++) {
         raven_comm_send_message(TAG, "=====================================");
         raven_comm_send_message(TAG, "Testing [%s]. Observe the hardware.", test_suite[i].name);
-        raven_comm_send_message(TAG, "Send 'VPASS' if working, or 'VFAIL' if it failed.");
+        raven_comm_send_message(TAG, "Send 'VPASS', 'VFAIL', or 'VABORT'.");
         
         // Trigger the specific hardware function
         test_suite[i].execute_test();
@@ -150,19 +112,26 @@ static void validate_all_peripherals(void) {
 
         // Wait for the human to judge the test
         while (waiting_for_verdict) {
-            if (peripheral_validation_get_command(received_cmd)) {
+            if (raven_comm_check_new_message(CMD_VALIDATION, received_cmd)) {
+                
                 if (strcmp(received_cmd, "PASS") == 0) {
                     test_suite[i].passed = true;
                     passed_count++;
                     waiting_for_verdict = false;
                     raven_comm_send_message(TAG, "[%s] marked as PASSED.", test_suite[i].name);
+                    
                 } else if (strcmp(received_cmd, "FAIL") == 0) {
                     test_suite[i].passed = false;
                     failed_count++;
                     waiting_for_verdict = false;
                     raven_comm_send_message(TAG, "[%s] marked as FAILED.", test_suite[i].name);
+                    
+                } else if (strcmp(received_cmd, "ABORT") == 0) {
+                    raven_comm_send_message(TAG, "VALIDATION ABORTED! Canceling remaining tests...");
+                    return; // Exits the entire validation process immediately
+                    
                 } else {
-                    raven_comm_send_message(TAG, "Invalid input '%s'. Expecting 'VPASS' or 'VFAIL'.", received_cmd);
+                    raven_comm_send_message(TAG, "Invalid input '%s'. Expecting 'VPASS', 'VFAIL', or 'VABORT'.", received_cmd);
                 }
             }
             vTaskDelay(pdMS_TO_TICKS(100)); // Yield to the OS
@@ -172,7 +141,7 @@ static void validate_all_peripherals(void) {
         vTaskDelay(pdMS_TO_TICKS(500)); 
     }
 
-    // 4. Generate the Final Report (Zero Heap Fragmentation!)
+    // 4. Generate the Final Report
     raven_comm_send_message(TAG, "==================================================");
     raven_comm_send_message(TAG, "                VALIDATION REPORT                 ");
     raven_comm_send_message(TAG, "==================================================");
