@@ -52,7 +52,7 @@ static void buzzer_task(void *pvParameters) {
             }
             
             buzzer_stop();
-            TickType_t pause = pdMS_TO_TICKS(10);
+            TickType_t pause = pdMS_TO_TICKS(12);
             vTaskDelay(pause > 0 ? pause : 1); 
         }
     }
@@ -86,7 +86,7 @@ void buzzer_init(void) {
     };
     ESP_ERROR_CHECK(ledc_channel_config(&ch_conf));
 
-    buzzer_queue = xQueueCreate(60, sizeof(buzzer_note_t));
+    buzzer_queue = xQueueCreate(100, sizeof(buzzer_note_t));
     xTaskCreatePinnedToCore(buzzer_task, "buzzer_task", 2048, NULL, 5, &buzzer_task_handle, 1);
 
     raven_comm_send_message(TAG, "Initialized successfully.");
@@ -112,14 +112,41 @@ void buzzer_peripheral_validation(void) {
     }  
 
     if (!buzzer_is_playing()) {
-        int melody[] = { NOTE_F5, NOTE_F5, NOTE_F5, NOTE_F5, NOTE_F5, NOTE_F5, NOTE_F5, NOTE_G5, NOTE_A5, NOTE_A5, NOTE_G5, NOTE_F5, NOTE_G5, NOTE_F5, NOTE_G5, NOTE_D5, NOTE_F5, NOTE_F5, NOTE_F5, NOTE_F5, NOTE_F5, NOTE_F5, NOTE_F5, NOTE_G5, NOTE_A5, NOTE_A5, NOTE_G5, NOTE_G5, NOTE_F5, NOTE_AS4, NOTE_F5, NOTE_F5, NOTE_C5, NOTE_C5, NOTE_A5, NOTE_A5, NOTE_AS4, NOTE_F5, NOTE_F5, NOTE_C5, NOTE_C5, NOTE_A5, NOTE_A5, NOTE_AS4, NOTE_F5, NOTE_F5, NOTE_C5, NOTE_A5, NOTE_A5, NOTE_B5, NOTE_A5, NOTE_G5 };
-        float note_durations[] = { 0.25, 0.75, 0.25, 0.75, 0.25, 0.75, 1, 0.25, 0.5, 0.5, 0.5, 0.25, 0.25, 0.25, 0.5, 1, 0.25, 0.75, 0.25, 0.75, 0.25, 0.75, 1, 0.25, 0.5, 0.75, 0.25, 0.5, 0.75, 0.5, 0.5, 1, 0.25, 0.25, 0.5, 1, 0.5, 0.5, 0.75, 0.25, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.25, 0.5, 0.75, 0.25, 0.25, 2 };
+        // int melody[] = { NOTE_F5, NOTE_F5, NOTE_F5, NOTE_F5, NOTE_F5, NOTE_F5, NOTE_F5, NOTE_G5, NOTE_A5, NOTE_A5, NOTE_G5, NOTE_F5, NOTE_G5, NOTE_F5, NOTE_G5, NOTE_D5, NOTE_F5, NOTE_F5, NOTE_F5, NOTE_F5, NOTE_F5, NOTE_F5, NOTE_F5, NOTE_G5, NOTE_A5, NOTE_A5, NOTE_G5, NOTE_G5, NOTE_F5, NOTE_AS4, NOTE_F5, NOTE_F5, NOTE_C5, NOTE_C5, NOTE_A5, NOTE_A5, NOTE_AS4, NOTE_F5, NOTE_F5, NOTE_C5, NOTE_C5, NOTE_A5, NOTE_A5, NOTE_AS4, NOTE_F5, NOTE_F5, NOTE_C5, NOTE_A5, NOTE_A5, NOTE_B5, NOTE_A5, NOTE_G5 };
+        // float note_durations[] = { 0.25, 0.75, 0.25, 0.75, 0.25, 0.75, 1, 0.25, 0.5, 0.5, 0.5, 0.25, 0.25, 0.25, 0.5, 1, 0.25, 0.75, 0.25, 0.75, 0.25, 0.75, 1, 0.25, 0.5, 0.75, 0.25, 0.5, 0.75, 0.5, 0.5, 1, 0.25, 0.25, 0.5, 1, 0.5, 0.5, 0.75, 0.25, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.25, 0.5, 0.75, 0.25, 0.25, 2 };
     
+        int melody[] = {
+            NOTE_D5, NOTE_C5, NOTE_B4, NOTE_A4, NOTE_REST,
+            NOTE_D5, NOTE_C5, NOTE_B4, NOTE_A4, NOTE_REST,
+
+            // Pensaba que contigo iba a envejecer
+            NOTE_A4, NOTE_A4, NOTE_A4, NOTE_D5, NOTE_C5, NOTE_B4, NOTE_A4, NOTE_D5, NOTE_C5, NOTE_B4, NOTE_A4, NOTE_C5, NOTE_REST,  
+
+            // En otra vida, en otro mundo podrá ser
+            NOTE_D5, NOTE_D5, NOTE_D5, NOTE_E5, NOTE_D5, NOTE_C5, NOTE_B4, NOTE_E5, NOTE_D5, NOTE_C5, NOTE_B4, NOTE_C5, NOTE_D5, NOTE_REST,
+
+            // En esta solo queda irme un día
+            NOTE_E5, NOTE_E5, NOTE_F5, NOTE_E5, NOTE_F5, NOTE_E5, NOTE_F5, NOTE_E5, NOTE_G5, NOTE_E5, NOTE_D5, NOTE_REST,
+
+            // Y solamente verte en el atardecer
+            NOTE_A4, NOTE_A4, NOTE_A4, NOTE_D5, NOTE_C5, NOTE_B4, NOTE_A4, NOTE_D5, NOTE_C5, NOTE_B4, NOTE_C5, NOTE_F4, NOTE_G4, NOTE_A4,
+        };
+
+        float note_durations[] = {
+            0.25, 0.25, 0.25, 0.75, 0.5,
+            0.25, 0.25, 0.25, 0.75, 0.5,
+
+            0.25, 0.5,  0.5, 0.5, 0.5, 0.5,  0.5, 0.5, 0.5,  0.5,  0.5,  1.25, 0.25,
+            0.25, 0.25, 0.5, 0.5, 0.5, 0.5,  0.5, 0.5, 0.5,  0.5,  0.5,  0.75, 1.25, 1.25,
+            0.25, 0.6,  0.5, 0.5, 0.5, 0.5,  0.5, 0.5, 0.75, 0.25, 1.25, 1.25,
+            0.25, 0.25, 0.5, 0.5, 0.5, 0.5,  0.5, 0.5, 0.5,  0.5,  0.5,  1.25, 1.00, 0.85,  
+        };
+
         uint16_t num_notes = sizeof(melody) / sizeof(melody[0]);
         xQueueReset(buzzer_queue);
     
         for (int i = 0; i < num_notes; i++) {
-            uint32_t duration = (uint32_t)(625.0f * note_durations[i]);
+            uint32_t duration = (uint32_t)(675.0f * note_durations[i]);
             buzzer_play(melody[i], duration);
         }
     }
