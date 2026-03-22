@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdarg.h>
-#include <string.h> // Required for memset and string operations
+#include <string.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
@@ -26,7 +26,7 @@
 /* MACROS & GLOBAL VARIABLES                                                  */
 /* ========================================================================== */
 
-#define TAG "COMM"
+#define TAG "CMM"
 static bool initialized = false;
 
 // Queue to safely pass data from the BLE ISR/Callback to the Decoder Task
@@ -104,7 +104,7 @@ static void raven_comm_decoder_task(void *pvParameters) {
         if (xQueueReceive(robot_command_queue, &received_cmd, portMAX_DELAY) == pdTRUE) {
             switch (received_cmd.type) {
                 case CMD_VALIDATION:
-                    peripheral_validation_handle_command(received_cmd.payload);
+                    peripheral_validation_set_command(received_cmd.payload);
                     break;
 
                 default:

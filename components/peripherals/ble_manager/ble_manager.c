@@ -19,7 +19,7 @@
 #include "services/gatt/ble_svc_gatt.h"
 #include "raven_log.h"
 
-#define TAG "BLE_MANAGER"
+#define TAG "BLE"
 static bool initialized = false;
 
 /* --- BLE Custom UUIDs --- */

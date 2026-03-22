@@ -8,7 +8,7 @@
 #include "raven_comm.h"
 #include "notes.h"
 
-#define TAG "BUZZER"
+#define TAG "BZR"
 static bool initialized = false;
 
 #define BUZZER_LEDC_TIMER     LEDC_TIMER_0

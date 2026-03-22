@@ -18,7 +18,7 @@
 #include "raven_comm.h"
 #include "colors.h"
 
-#define TAG "LEDS"
+#define TAG "LED"
 static bool initialized = false;
 
 /* --- Macros & Configuration --- */

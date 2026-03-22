@@ -76,7 +76,7 @@ static void *state_wait_user_connection(void *args) {
     if (ble_manager_get_connection_status()) {
         CHANGE_STATE(state_initialization);
     }
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    vTaskDelay(pdMS_TO_TICKS(1500));
 
     return NULL;
 }

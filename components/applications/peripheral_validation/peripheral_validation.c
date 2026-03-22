@@ -12,7 +12,7 @@
 #include "rgb_led.h"
 #include "buzzer.h"
 
-#define TAG "VALIDATION"
+#define TAG "VLD"
 
 /* ========================================================================== */
 /* PRIVATE MODULE VARIABLES                                                   */
@@ -41,8 +41,8 @@ typedef struct {
 /* PRIVATE FUNCTION DECLARATIONS                                              */
 /* ========================================================================== */
 
-void validate_all_peripherals(void);
-bool peripheral_validation_get_command(char *out_buffer);
+static void validate_all_peripherals(void);
+static bool peripheral_validation_get_command(char *out_buffer);
 
 /* ========================================================================== */
 /* FUNCTION IMPLEMENTATIONS                                                   */
@@ -53,7 +53,7 @@ bool peripheral_validation_get_command(char *out_buffer);
  * * This function is called by the decoder task in raven_comm.
  * * @param payload The null-terminated string received via BLE.
  */
-void peripheral_validation_handle_command(const char *payload) {
+void peripheral_validation_set_command(const char *payload) {
     if (payload == NULL) return;
 
     // Copies the payload safely and raises the new command flag
@@ -67,7 +67,7 @@ void peripheral_validation_handle_command(const char *payload) {
  * * @param out_buffer Pointer to a character array where the payload will be copied.
  * @return true if a new command was read, false otherwise.
  */
-bool peripheral_validation_get_command(char *out_buffer) {
+static bool peripheral_validation_get_command(char *out_buffer) {
     if (!has_new_command) {
         return false;
     }
@@ -107,8 +107,8 @@ void peripheral_validation(peripheral_to_validate_t peripheral) {
  * iterates through a suite of tests, waiting for 'VPASS' or 'VFAIL' for each.
  * Finally, it generates a comprehensive validation report via the log system.
  */
-void validate_all_peripherals(void) {
-    raven_comm_send_message(TAG, "=== COMPLETE PERIPHERAL VALIDATION ===");
+static void validate_all_peripherals(void) {
+    raven_comm_send_message(TAG, "========= COMPLETE PERIPHERAL VALIDATION =========");
     raven_comm_send_message(TAG, "Send 'VOK' to start the process.");
     
     char received_cmd[RAVEN_COMM_MAX_PAYLOAD_LEN];
@@ -174,7 +174,7 @@ void validate_all_peripherals(void) {
 
     // 4. Generate the Final Report (Zero Heap Fragmentation!)
     raven_comm_send_message(TAG, "==================================================");
-    raven_comm_send_message(TAG, "             VALIDATION REPORT                    ");
+    raven_comm_send_message(TAG, "                VALIDATION REPORT                 ");
     raven_comm_send_message(TAG, "==================================================");
     raven_comm_send_message(TAG, "Total Devices Tested : %d", num_tests);
     raven_comm_send_message(TAG, "Successfully Passed  : %d", passed_count);
