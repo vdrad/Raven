@@ -64,7 +64,6 @@ static portMUX_TYPE mailbox_spinlock = portMUX_INITIALIZER_UNLOCKED;
  * @param len  Length of the received data array.
  */
 static void receive_message_cb(uint8_t *data, uint16_t len) {
-    // Fixed bitwise OR (|) to logical OR (||)
     if (data == NULL || len == 0) return;
 
     robot_command_t new_command;
@@ -73,7 +72,8 @@ static void receive_message_cb(uint8_t *data, uint16_t len) {
     // 1. Extract the header to determine the command category
     char header = (char)data[0];
     switch (header) {
-        case 'V': new_command.type = CMD_VALIDATION;  break;
+        case 'V': new_command.type = CMD_VALIDATION;     break;
+        case 'S': new_command.type = CMD_STATE_MACHINE;  break;
         default:  new_command.type = CMD_UNKNOWN; break;
     }
 

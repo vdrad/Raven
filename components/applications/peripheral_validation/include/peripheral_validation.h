@@ -9,4 +9,3 @@ typedef enum {
 
 // FUNCTIONS
 void peripheral_validation(peripheral_to_validate_t peripheral);
-void peripheral_validation_set_command(const char *payload);
