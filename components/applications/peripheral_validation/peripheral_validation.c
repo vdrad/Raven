@@ -1,3 +1,13 @@
+/**
+ * @file peripheral_validation.c
+ * @brief Hardware and peripheral validation suite.
+ *
+ * This module provides an interactive test suite to validate the physical 
+ * integrity and operation of the robot's peripherals (LEDs, buzzers, etc.). 
+ * It interacts with the user via the communication link, asking for manual 
+ * verification of hardware feedback.
+ */
+
 #include "peripheral_validation.h"
 #include <stdbool.h>
 #include <string.h>
@@ -15,7 +25,7 @@
 #define TAG "VLD"
 
 /* ========================================================================== */
-/* INTERNAL STRUCTURES                                                        */
+/* MACROS, TYPES & ENUMS                                                      */
 /* ========================================================================== */
 
 /**
@@ -27,11 +37,23 @@ typedef struct {
     bool passed;                    /**< Stores the user's pass/fail verdict */
 } peripheral_test_t;
 
+/**
+ * @brief Internal commands recognized by the Peripheral Validation command decoder.
+ */
+typedef enum {
+    VLD_CMD_UNKNOWN = 0,    /**< Unrecognized command payload. */
+    VLD_CMD_OK,             /**< Start the validation process (Payload: 'OK'). */
+    VLD_CMD_PASS,           /**< Mark current test as passed (Payload: 'PASS'). */
+    VLD_CMD_FAIL,           /**< Mark current test as failed (Payload: 'FAIL'). */
+    VLD_CMD_ABORT,          /**< Cancel the validation process (Payload: 'ABORT'). */
+} peripheral_validation_cmd_type_t;
+
 /* ========================================================================== */
 /* PRIVATE FUNCTION DECLARATIONS                                              */
 /* ========================================================================== */
 
 static void validate_all_peripherals(void);
+static peripheral_validation_cmd_type_t command_decoder(char *payload);
 
 /* ========================================================================== */
 /* FUNCTION IMPLEMENTATIONS                                                   */
@@ -40,7 +62,7 @@ static void validate_all_peripherals(void);
 /**
  * @brief Main routing function for peripheral validation.
  *
- * @param peripheral The specific peripheral or group to validate.
+ * @param peripheral The specific peripheral or group of peripherals to validate.
  */
 void peripheral_validation(peripheral_to_validate_t peripheral) {
     switch (peripheral) {
@@ -61,7 +83,21 @@ void peripheral_validation(peripheral_to_validate_t peripheral) {
 }
 
 /**
- * @brief Validates all peripherals sequentially, waiting for app confirmation.
+ * @brief Decodes the string payload into a specific validation command enum.
+ * * @param payload The raw string payload received from the communication link.
+ * @return The corresponding peripheral_validation_cmd_type_t enum value.
+ */
+static peripheral_validation_cmd_type_t command_decoder(char *payload) {
+    if (strcmp(payload, "OK") == 0)    return VLD_CMD_OK;
+    if (strcmp(payload, "PASS") == 0)  return VLD_CMD_PASS;
+    if (strcmp(payload, "FAIL") == 0)  return VLD_CMD_FAIL;
+    if (strcmp(payload, "ABORT") == 0) return VLD_CMD_ABORT;
+
+    return VLD_CMD_UNKNOWN;
+}
+
+/**
+ * @brief Validates all peripherals sequentially, waiting for user confirmation.
  *
  * This function blocks execution until a 'VOK' command is received, then 
  * iterates through a suite of tests, waiting for 'VPASS', 'VFAIL', or 'VABORT' 
@@ -83,18 +119,25 @@ static void validate_all_peripherals(void) {
 
     raven_comm_send_message(TAG, "========= COMPLETE PERIPHERAL VALIDATION =========");
     raven_comm_send_message(TAG, "Send 'VOK' to start the process.");
-    
+
     // 2. Wait for the initial "OK" or "ABORT"
     while (!start_validation) {
         if (raven_comm_check_new_message(CMD_VALIDATION, received_cmd)) {
-            if (strcmp(received_cmd, "OK") == 0) {
-                raven_comm_send_message(TAG, "'VOK' command accepted! Starting test suite...");
-                start_validation = true; 
-            } else if (strcmp(received_cmd, "ABORT") == 0) {
-                raven_comm_send_message(TAG, "Validation aborted by user before starting.");
-                return; // Exits the function completely
-            } else {
-                raven_comm_send_message(TAG, "Expected 'VOK', but received 'V%s'.", received_cmd);
+            peripheral_validation_cmd_type_t cmd = command_decoder(received_cmd);
+            
+            switch (cmd) {
+                case VLD_CMD_OK:
+                    raven_comm_send_message(TAG, "'VOK' command accepted! Starting test suite...");
+                    start_validation = true;
+                    break;
+                    
+                case VLD_CMD_ABORT:
+                    raven_comm_send_message(TAG, "Validation aborted by user before starting.");
+                    return; // Exits the function completely
+                    
+                default:
+                    raven_comm_send_message(TAG, "Expected 'VOK', but received 'V%s'.", received_cmd);
+                    break;
             }
         }
         vTaskDelay(pdMS_TO_TICKS(100)); // Yield to the OS
@@ -113,25 +156,30 @@ static void validate_all_peripherals(void) {
         // Wait for the human to judge the test
         while (waiting_for_verdict) {
             if (raven_comm_check_new_message(CMD_VALIDATION, received_cmd)) {
+                peripheral_validation_cmd_type_t cmd = command_decoder(received_cmd);
                 
-                if (strcmp(received_cmd, "PASS") == 0) {
-                    test_suite[i].passed = true;
-                    passed_count++;
-                    waiting_for_verdict = false;
-                    raven_comm_send_message(TAG, "[%s] marked as PASSED.", test_suite[i].name);
-                    
-                } else if (strcmp(received_cmd, "FAIL") == 0) {
-                    test_suite[i].passed = false;
-                    failed_count++;
-                    waiting_for_verdict = false;
-                    raven_comm_send_message(TAG, "[%s] marked as FAILED.", test_suite[i].name);
-                    
-                } else if (strcmp(received_cmd, "ABORT") == 0) {
-                    raven_comm_send_message(TAG, "VALIDATION ABORTED! Canceling remaining tests...");
-                    return; // Exits the entire validation process immediately
-                    
-                } else {
-                    raven_comm_send_message(TAG, "Invalid input '%s'. Expecting 'VPASS', 'VFAIL', or 'VABORT'.", received_cmd);
+                switch (cmd) {
+                    case VLD_CMD_PASS:
+                        test_suite[i].passed = true;
+                        passed_count++;
+                        waiting_for_verdict = false;
+                        raven_comm_send_message(TAG, "[%s] marked as PASSED.", test_suite[i].name);
+                        break;
+
+                    case VLD_CMD_FAIL:
+                        test_suite[i].passed = false;
+                        failed_count++;
+                        waiting_for_verdict = false;
+                        raven_comm_send_message(TAG, "[%s] marked as FAILED.", test_suite[i].name);
+                        break;
+
+                    case VLD_CMD_ABORT:
+                        raven_comm_send_message(TAG, "VALIDATION ABORTED! Canceling remaining tests...");
+                        return; // Exits the entire validation process immediately
+
+                    default:
+                        raven_comm_send_message(TAG, "Invalid input '%s'. Expecting 'VPASS', 'VFAIL', or 'VABORT'.", received_cmd);
+                        break;
                 }
             }
             vTaskDelay(pdMS_TO_TICKS(100)); // Yield to the OS
