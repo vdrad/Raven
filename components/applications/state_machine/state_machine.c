@@ -9,6 +9,7 @@
 #include "state_machine.h"
 #include "raven_log.h"
 #include "raven_comm.h"
+#include "ble_manager.h"
 #include "peripheral_validation.h"
 #include "rgb_led.h"
 #include "buzzer.h"
@@ -36,7 +37,9 @@ typedef void *(*state_callback)(void *);
 /* ========================================================================== */
 
 // Forward declare all available states here using the macro
+ADD_STATE(wait_user_connection);
 ADD_STATE(initialization);
+ADD_STATE(configuration);
 ADD_STATE(test);
 ADD_STATE(validation);
 
@@ -50,8 +53,8 @@ static struct {
     const uint8_t *name;  // Stores the string name of the state (useful for logs)
     state_callback cb;    // Function pointer to the current state execution
 } state_machine = {
-    .name = _state_initialization_name,
-    .cb = state_initialization
+    .name = _state_wait_user_connection_name,
+    .cb = state_wait_user_connection
 };
 
 // Handle to manage the FreeRTOS task running the state machine
@@ -63,14 +66,39 @@ static TaskHandle_t state_machine_task_handle = NULL;
 /* ========================================================================== */
 
 /**
+ * @brief Wait for user connection state: Waits for a client device to be connected.
+ * Transitions to: initialization state.
+ */
+static void *state_wait_user_connection(void *args) {
+    raven_comm_init();
+
+    RAVEN_LOGI("WAIT CONN", "Waiting for user connection.");
+    if (ble_manager_get_connection_status()) {
+        CHANGE_STATE(state_initialization);
+    }
+    vTaskDelay(pdMS_TO_TICKS(1000));
+
+    return NULL;
+}
+
+/**
  * @brief Initialization state: Sets up peripherals and communications.
  * Transitions to: Test state.
  */
 static void *state_initialization(void *args) {
-    raven_comm_init();
     rgb_led_init();
     buzzer_init();
 
+    CHANGE_STATE(state_test);
+    return NULL;
+}
+
+/**
+ * @brief Configuration state: Configurates robot.
+ * Transitions to: Test state or validation state.
+ */
+static void *state_configuration(void *args) {
+    // todo: Add command read, and based on that, switch states.
     CHANGE_STATE(state_test);
     return NULL;
 }
@@ -91,7 +119,7 @@ static void *state_test(void *args) {
  * Transitions to: Itself (looping state).
  */
 static void *state_validation(void *args) {
-    peripheral_validation(PERIPHERAL_BUZZER);
+    peripheral_validation(PERIPHERAL_ALL);
     
     // Delay to yield to other tasks and prevent hardware watchdog triggers
     vTaskDelay(pdMS_TO_TICKS(1000));
@@ -132,7 +160,7 @@ static void state_machine_task(void *pvParameters) {
  * @brief Forces the state machine back to the initialization state.
  */
 void state_machine_reset(void) { 
-    CHANGE_STATE(state_initialization); 
+    CHANGE_STATE(state_wait_user_connection); 
 }
 
 /**

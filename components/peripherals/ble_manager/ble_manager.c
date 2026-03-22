@@ -32,6 +32,7 @@ static bool initialized = false;
 static uint8_t own_addr_type;                            // Stores the device's own BLE address type
 static uint16_t ble_spp_svc_gatt_read_val_handle;        // Handle for the SPP characteristic
 static bool conn_handle_subs[CONFIG_BT_NIMBLE_MAX_CONNECTIONS + 1]; // Tracks which connections are subscribed to notifications
+static bool connection_status = false;
 
 // Pointer to the user-defined callback function for incoming data
 static ble_receive_message_cb_t g_reception_callback = NULL;
@@ -151,6 +152,7 @@ static int ble_spp_server_gap_event(struct ble_gap_event *event, void *arg) {
             if (event->connect.status != 0) {
                 ble_spp_server_advertise();
             }
+            connection_status = true;
             break;
 
         case BLE_GAP_EVENT_DISCONNECT:
@@ -158,6 +160,7 @@ static int ble_spp_server_gap_event(struct ble_gap_event *event, void *arg) {
             conn_handle_subs[event->disconnect.conn.conn_handle] = false;
             // Resume advertising so other devices can connect
             ble_spp_server_advertise();
+            connection_status = false;
             break;
 
         case BLE_GAP_EVENT_SUBSCRIBE:
@@ -278,4 +281,8 @@ void ble_manager_init(void) {
 
     RAVEN_LOGI(TAG, "Initialized successfully.");
     initialized = true;
+}
+
+bool ble_manager_get_connection_status(void) {
+    return connection_status;
 }

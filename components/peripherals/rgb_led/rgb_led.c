@@ -79,7 +79,7 @@ void rgb_led_init(void) {
     memset(led_pixels, 0, sizeof(led_pixels));
     ESP_ERROR_CHECK(rmt_transmit(led_chan, led_encoder, led_pixels, sizeof(led_pixels), &tx_config));
 
-    raven_comm_send_message(TAG, "Initialized successfully");
+    raven_comm_send_message(TAG, "Initialized successfully.");
     initialized = true;
 }
 
@@ -126,7 +126,7 @@ void rgb_led_set_all_colors(uint8_t red, uint8_t green, uint8_t blue) {
  */
 void rgb_led_show(void) {
     if (!initialized) {
-        RAVEN_LOGE(TAG, "Not initialized!");
+        raven_comm_send_message(TAG, "Not initialized!");
         return;
     }
 
@@ -140,7 +140,7 @@ void rgb_led_show(void) {
  */
 void rgb_led_clear(void) {
     if (!initialized) {
-        RAVEN_LOGE(TAG, "Not initialized!");
+        raven_comm_send_message(TAG, "Not initialized!");
         return; 
     }   
 

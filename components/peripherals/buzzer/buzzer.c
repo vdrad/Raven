@@ -22,7 +22,7 @@ static TaskHandle_t buzzer_task_handle = NULL;
 
 void buzzer_stop(void) {
     if (!initialized) {
-        RAVEN_LOGE(TAG, "Not initialized!");
+        raven_comm_send_message(TAG, "Not initialized!");
         return; 
     }  
 
@@ -60,7 +60,7 @@ static void buzzer_task(void *pvParameters) {
 
 bool buzzer_is_playing(void) {
     if (!initialized || buzzer_queue == NULL) {
-        RAVEN_LOGE(TAG, "Not initialized!");
+        raven_comm_send_message(TAG, "Not initialized!");
         return false; 
     }  
     
@@ -89,25 +89,25 @@ void buzzer_init(void) {
     buzzer_queue = xQueueCreate(60, sizeof(buzzer_note_t));
     xTaskCreatePinnedToCore(buzzer_task, "buzzer_task", 2048, NULL, 5, &buzzer_task_handle, 1);
 
-    raven_comm_send_message(TAG, "Initialized successfully");
+    raven_comm_send_message(TAG, "Initialized successfully.");
     initialized = true;
 }
 
 void buzzer_play(uint32_t freq_hz, uint32_t duration_ms) {
     if (!initialized || buzzer_queue == NULL) {
-        RAVEN_LOGE(TAG, "Not initialized!");
+        raven_comm_send_message(TAG, "Not initialized!");
         return; 
     }  
 
     buzzer_note_t note = { .freq_hz = freq_hz, .duration_ms = duration_ms };
     if (xQueueSend(buzzer_queue, &note, 0) != pdTRUE) {
-        RAVEN_LOGE(TAG, "Queue full! Dropping note.");
+        raven_comm_send_message(TAG, "Queue full! Dropping note.");
     }
 }
 
 void buzzer_peripheral_validation(void) {
     if (!initialized || buzzer_queue == NULL) {
-        RAVEN_LOGE(TAG, "Not initialized!");
+        raven_comm_send_message(TAG, "Not initialized!");
         return; 
     }  
 

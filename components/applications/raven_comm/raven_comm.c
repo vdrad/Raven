@@ -2,66 +2,181 @@
  * @file raven_comm.c
  * @brief High-level communication manager for the robot.
  * * This module acts as the application-level wrapper for telemetry and data transmission.
- * It formats outgoing messages with a specific TAG and ensures they are safely appended 
- * with carriage return and line feed (\r\n) characters before routing them to the 
- * underlying BLE manager.
+ * It formats outgoing messages with a specific TAG, appends carriage return and line 
+ * feed (\r\n) characters, and routes them to the underlying BLE manager.
+ * It also manages an independent FreeRTOS task to decode incoming BLE commands 
+ * without blocking the main robot control loop (PID/Sensors).
  */
 
 #include "raven_comm.h"
 #include <stdio.h>
 #include <stdbool.h>
-#include <stdarg.h> 
+#include <stdarg.h>
+#include <string.h> // Required for memset and string operations
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
+#include "freertos/task.h"
+
 #include "raven_log.h"
 #include "ble_manager.h"
+#include "peripheral_validation.h"
 
-/* --- Macros --- */
+/* ========================================================================== */
+/* MACROS & GLOBAL VARIABLES                                                  */
+/* ========================================================================== */
+
 #define TAG "COMM"
-
-/* --- Global Variables --- */
 static bool initialized = false;
 
-/* --- Functions --- */
+// Queue to safely pass data from the BLE ISR/Callback to the Decoder Task
+QueueHandle_t robot_command_queue = NULL;
+
+// Handle for the decoder task
+static TaskHandle_t comm_decoder_task_handle = NULL;
+
+
+/* ========================================================================== */
+/* PRIVATE FUNCTIONS                                                          */
+/* ========================================================================== */
+
+/**
+ * @brief Callback triggered by the BLE manager when data is received from the app.
+ * * Extracts the command header, strips carriage returns and line feeds from the 
+ * payload, and safely dispatches the structured command to the FreeRTOS queue.
+ * * @param data Pointer to the raw byte array received via BLE.
+ * @param len  Length of the received data array.
+ */
+static void receive_message_cb(uint8_t *data, uint16_t len) {
+    // Fixed bitwise OR (|) to logical OR (||)
+    if (data == NULL || len == 0) return;
+
+    robot_command_t new_command;
+    memset(&new_command, 0, sizeof(robot_command_t));
+
+    // 1. Extract the header to determine the command category
+    char header = (char)data[0];
+    switch (header) {
+        case 'V': new_command.type = CMD_VALIDATION;  break;
+        default:  new_command.type = CMD_UNKNOWN; break;
+    }
+
+    // 2. Extract payload, ignoring \r and \n characters
+    uint16_t payload_idx = 0;
+    for (uint16_t i = 1; i < len; i++) {
+        char c = (char)data[i];
+        if (c == '\r' || c == '\n') continue;
+        
+        if (payload_idx < (RAVEN_COMM_MAX_PAYLOAD_LEN - 1)) {
+            new_command.payload[payload_idx] = c;
+            payload_idx++;
+        }
+    }
+
+    new_command.payload[payload_idx] = '\0';
+    RAVEN_LOGI(TAG, "Header: '%c' -> Type: %d | Clean Payload: '%s'", header, new_command.type, new_command.payload);
+
+    // 3. Send the structured command to the decoder task queue
+    if (new_command.type != CMD_UNKNOWN) {
+        if (robot_command_queue != NULL) {
+            // Sends with 0 ticks to wait, ensuring the BLE callback is never blocked
+            xQueueSend(robot_command_queue, &new_command, 0);
+        } else {
+            RAVEN_LOGE(TAG, "Queue robot_command_queue is not initialized!");
+        }
+    } else {
+        RAVEN_LOGW(TAG, "Unknown command ignored.");
+    }
+}
+
+/**
+ * @brief Dedicated FreeRTOS task for decoding and routing received commands.
+ * * By running in a separate task and blocking indefinitely on the queue, 
+ * this function consumes 0% CPU until a message arrives, ensuring the main 
+ * PID/Sensor state machine remains completely unaffected and runs in constant time.
+ * * @param pvParameters Standard FreeRTOS task parameter (unused).
+ */
+static void raven_comm_decoder_task(void *pvParameters) {
+    robot_command_t received_cmd;
+
+    for (;;) {
+        // Blocks indefinitely (portMAX_DELAY) until a message arrives in the queue.
+        if (xQueueReceive(robot_command_queue, &received_cmd, portMAX_DELAY) == pdTRUE) {
+            switch (received_cmd.type) {
+                case CMD_VALIDATION:
+                    peripheral_validation_handle_command(received_cmd.payload);
+                    break;
+
+                default:
+                    break;
+            }
+        }
+    }
+}
+
+
+/* ========================================================================== */
+/* PUBLIC API                                                                 */
+/* ========================================================================== */
 
 /**
  * @brief Initializes the high-level communication module.
- * * Sets up the underlying Bluetooth Low Energy (BLE) manager and readies
- * the system to transmit and receive telemetry data. Safely ignores repeated calls.
+ * * Sets up the underlying Bluetooth Low Energy (BLE) manager, creates the 
+ * internal message queue, and spawns the dedicated decoder task.
+ * Safely ignores repeated calls.
  */
 void raven_comm_init(void) {
     if (initialized) return;
 
+    // 1. Create the command queue BEFORE starting tasks or BLE
+    robot_command_queue = xQueueCreate(10, sizeof(robot_command_t));
+    if (robot_command_queue == NULL) {
+        RAVEN_LOGE(TAG, "Failed to create robot_command_queue!");
+        return;
+    }
+
+    // 2. Initialize BLE and register the callback
     ble_manager_init();
-    
+    ble_manager_receive_callback(receive_message_cb);
+
+    // 3. Spawn the Decoder Task
+    xTaskCreatePinnedToCore(
+        raven_comm_decoder_task, 
+        "comm_decoder", 
+        4096, 
+        NULL, 
+        5, 
+        &comm_decoder_task_handle, 
+        1
+    );
+
     initialized = true;
+    raven_comm_send_message(TAG, "Initialized successfully.");
 }
 
 /**
- * @brief Formats and sends a tagged telemetry message over the active communication channel (BLE).
- * * This function behaves similarly to `printf` or `ESP_LOGI`. It safely combines the provided 
- * TAG and the formatted string into a single local buffer, appends the standard `\r\n` line 
- * ending, and transmits it. It includes buffer overflow protection to prevent system crashes 
- * if the resulting string is too long.
- * * @param tag    A short string identifying the source or type of the message (e.g., "BATTERY", "MOTOR").
- * @param format The format string (C-style, like in printf).
+ * @brief Formats and sends a tagged telemetry message over BLE.
+ * * This function behaves similarly to `printf`. It safely combines the provided 
+ * TAG and formatted string, appends `\r\n`, and transmits it. Includes buffer 
+ * overflow protection to prevent system crashes.
+ * * @param tag    A short string identifying the source (e.g., "BATTERY", "PID").
+ * @param format The C-style format string.
  * @param ...    Variable arguments matching the format specifiers.
  */
 void raven_comm_send_message(const char *tag, const char *format, ...) {
     char buffer[RAVEN_COMM_MAX_MESSAGE_LEN];
 
-    // 1. Write the TAG into the buffer formatted as "[TAG] "
+    // 1. Write the TAG
     int prefix_len = snprintf(buffer, sizeof(buffer), "[%s] ", tag);
     
-    // Safety check: ensure the tag isn't absurdly large and didn't cause an error
     if (prefix_len < 0 || prefix_len >= sizeof(buffer)) {
         RAVEN_LOGE(TAG, "TAG is too big.");
         return; 
     }
  
-    // 2. Format the main message payload right after the TAG
+    // 2. Format the main message payload
     va_list args;
     va_start(args, format);
-
-    // Write the variable arguments into the remaining space in the buffer
     int msg_len = vsnprintf(buffer + prefix_len, sizeof(buffer) - prefix_len, format, args);
     va_end(args);
 
@@ -69,20 +184,17 @@ void raven_comm_send_message(const char *tag, const char *format, ...) {
     if (msg_len > 0) {
         int total_len = prefix_len + msg_len;
         
-        // Check if there is enough space to add the "\r\n" (2 bytes)
         if (total_len + 2 < sizeof(buffer)) {
             buffer[total_len] = '\r';
             buffer[total_len + 1] = '\n';
             total_len += 2;
         } else {
-            // If the buffer is completely full, crush the last two characters 
-            // to forcefully guarantee the safe line break transmission.
+            // Force line break if buffer is full
             buffer[sizeof(buffer) - 3] = '\r';
             buffer[sizeof(buffer) - 2] = '\n';
             total_len = sizeof(buffer) - 1;
         }
         
-        // Route the fully assembled byte array to the BLE driver for transmission
         ble_manager_send_message((uint8_t *)buffer, (uint16_t)total_len);
     }
 }
