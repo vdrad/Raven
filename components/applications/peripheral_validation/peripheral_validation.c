@@ -21,6 +21,7 @@
 #include "raven_log.h"
 #include "rgb_led.h"
 #include "buzzer.h"
+#include "battery_sensor.h"
 
 #define TAG "VLD"
 
@@ -75,6 +76,9 @@ void peripheral_validation(peripheral_to_validate_t peripheral) {
         case PERIPHERAL_BUZZER:
             buzzer_peripheral_validation();
             break;
+        case PERIPHERAL_BATTERY_SENSOR:
+            battery_sensor_peripheral_validation();
+            break;
 
         default:
             RAVEN_LOGW(TAG, "Unknown peripheral for validation.");
@@ -106,8 +110,9 @@ static peripheral_validation_cmd_type_t command_decoder(char *payload) {
 static void validate_all_peripherals(void) {
     // 1. Define the Test Suite using an array of structs
     peripheral_test_t test_suite[] = {
-        {"RGB LED", rgb_led_peripheral_validation, false},
-        {"BUZZER",  buzzer_peripheral_validation,  false}
+        {"RGB LED", rgb_led_peripheral_validation,         false},
+        {"BUZZER",  buzzer_peripheral_validation,          false},
+        {"BATTERY", battery_sensor_peripheral_validation,  false}
         // To add a new device, just add one line here! e.g., {"Infrared", ir_validate, false}
     };
     

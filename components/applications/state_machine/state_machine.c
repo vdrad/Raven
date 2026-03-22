@@ -24,6 +24,7 @@
 #include "peripheral_validation.h"
 #include "rgb_led.h"
 #include "buzzer.h"
+#include "battery_sensor.h"
 
 #define TAG "SMA"
 
@@ -198,6 +199,7 @@ static void *state_wait_user_connection(void *args) {
 static void *state_initialization(void *args) {
     rgb_led_init();
     buzzer_init();
+    battery_sensor_init();
 
     raven_comm_send_message(TAG, "All devices initialized.");
     REQUEST_STATE(state_configuration);
@@ -220,6 +222,7 @@ static void *state_configuration(void *args) {
  */
 static void *state_test(void *args) {
     // Add self-test logic here
+    battery_sensor_peripheral_validation();
     vTaskDelay(pdMS_TO_TICKS(500));
     return NULL;
 }
