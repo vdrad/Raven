@@ -193,36 +193,37 @@ void AD7490_read_all_channels(uint16_t array[NUMBER_OF_ACTIVE_CHANNELS]) {
  * and reading all channels. Proves SPI integrity by printing the embedded 
  * channel ID from the ADC's raw frame.
  *
- * @param print_values If true, prints both the channel ID and its ADC reading (e.g., "C1:4095").
- * If false, prints only the channel sequence (e.g., "1 2 3 4").
  */
-void AD7490_peripheral_validation(bool print_values) {
+void AD7490_peripheral_validation() {
     if (!initialized) {
         raven_comm_send_message(TAG, "Not initialized!");
         return;
     }
 
-    // 1. Prepare the string buffer for BLE transmission
-    char buffer[RAVEN_COMM_MAX_MESSAGE_LEN];
-    int offset = snprintf(buffer, sizeof(buffer), "Seq: ");
-    
-    // 2. Read directly from the sequence to capture the exact arrival order
-    for (uint8_t i = 0; i < NUMBER_OF_ACTIVE_CHANNELS; i++) {
-        uint8_t channel;
-        uint16_t data; 
+    // So it can print multiple values during validation stage
+    for (uint8_t repetitions = 0; repetitions < 10; repetitions++) {
+        // 1. Prepare the string buffer for BLE transmission
+        char buffer[RAVEN_COMM_MAX_MESSAGE_LEN];
+        int offset = snprintf(buffer, sizeof(buffer), "Seq: ");
         
-        // Fetch raw data straight from the SPI bus
-        read_from_sequence(&channel, &data);
-        
-        // Append based on the user's choice
-        if (offset < sizeof(buffer)) {
-            if (print_values) offset += snprintf(buffer + offset, sizeof(buffer) - offset, "C%d:%d ", channel, data);
-            else offset += snprintf(buffer + offset, sizeof(buffer) - offset, "%d ", channel);
+        // 2. Read directly from the sequence to capture the exact arrival order
+        for (uint8_t i = 0; i < NUMBER_OF_ACTIVE_CHANNELS; i++) {
+            uint8_t channel;
+            uint16_t data; 
+            
+            // Fetch raw data straight from the SPI bus
+            read_from_sequence(&channel, &data);
+            
+            // Append based on the user's choice
+            if (offset < sizeof(buffer)) {
+                // offset += snprintf(buffer + offset, sizeof(buffer) - offset, "C%d:%d ", channel, data);
+                offset += snprintf(buffer + offset, sizeof(buffer) - offset, "%d ", channel);
+            }
         }
+    
+        // 3. Send the proof of life to the app/terminal
+        raven_comm_send_message(TAG, "%s", buffer);
     }
-
-    // 3. Send the proof of life to the app/terminal
-    raven_comm_send_message(TAG, "%s", buffer);
 }
 
 /**

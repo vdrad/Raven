@@ -57,6 +57,19 @@ void AD7490_read_all_channels(uint16_t array[NUMBER_OF_ACTIVE_CHANNELS]);
  * @brief Executes a hardware validation routine, reading all channels and 
  * sending the raw output via the communication link.
  */
-void AD7490_peripheral_validation(bool print_values);
+void AD7490_peripheral_validation();
 
+/**
+ * @brief Executes a performance benchmark on the AD7490 SPI read function.
+ * Calculates average, minimum, and maximum execution times across 1000 samples
+ * for reading ALL active channels, using the internal CPU cycle counter.
+ *
+ * Benchmark Results (ESP32-S3 Mini 1U) for a full array read:
+ * - Average Time: 350.0 us
+ * - Minimum Time: 349.0 us
+ * - Maximum Time: 365.0 us
+ * - Equivalent Array Sampling Freq: ~2.85 kHz 
+ * * Note: Consumes roughly 35% of a 1ms tick, leaving plenty of headroom 
+ * to run a 1 kHz PID loop synchronously.
+ */
 void AD7490_benchmark_read(void);

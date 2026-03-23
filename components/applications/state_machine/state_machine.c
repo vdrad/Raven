@@ -224,7 +224,7 @@ static void *state_configuration(void *args) {
  */
 static void *state_test(void *args) {
     // Add self-test logic here
-    // AD7490_peripheral_validation(false);
+    // AD7490_peripheral_validation();
     AD7490_benchmark_read();
     vTaskDelay(pdMS_TO_TICKS(500));
     return NULL;

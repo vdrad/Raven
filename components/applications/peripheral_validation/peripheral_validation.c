@@ -22,6 +22,7 @@
 #include "rgb_led.h"
 #include "buzzer.h"
 #include "battery_sensor.h"
+#include "AD7490.h"
 
 #define TAG "VLD"
 
@@ -79,6 +80,9 @@ void peripheral_validation(peripheral_to_validate_t peripheral) {
         case PERIPHERAL_BATTERY_SENSOR:
             battery_sensor_peripheral_validation();
             break;
+        case PERIPHERAL_AD7490:
+            AD7490_peripheral_validation(false);
+            break;
 
         default:
             RAVEN_LOGW(TAG, "Unknown peripheral for validation.");
@@ -112,7 +116,8 @@ static void validate_all_peripherals(void) {
     peripheral_test_t test_suite[] = {
         {"RGB LED", rgb_led_peripheral_validation,         false},
         {"BUZZER",  buzzer_peripheral_validation,          false},
-        {"BATTERY", battery_sensor_peripheral_validation,  false}
+        {"BATTERY", battery_sensor_peripheral_validation,  false},
+        {"AD7490",  AD7490_peripheral_validation,          false}
         // To add a new device, just add one line here! e.g., {"Infrared", ir_validate, false}
     };
     
