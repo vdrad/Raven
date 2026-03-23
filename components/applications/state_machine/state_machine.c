@@ -25,6 +25,7 @@
 #include "rgb_led.h"
 #include "buzzer.h"
 #include "battery_sensor.h"
+#include "AD7490.h"
 
 #define TAG "SMA"
 
@@ -200,6 +201,7 @@ static void *state_initialization(void *args) {
     rgb_led_init();
     buzzer_init();
     battery_sensor_init();
+    AD7490_init();
 
     raven_comm_send_message(TAG, "All devices initialized.");
     REQUEST_STATE(state_configuration);
@@ -222,7 +224,8 @@ static void *state_configuration(void *args) {
  */
 static void *state_test(void *args) {
     // Add self-test logic here
-    battery_sensor_peripheral_validation();
+    // AD7490_peripheral_validation(false);
+    AD7490_benchmark_read();
     vTaskDelay(pdMS_TO_TICKS(500));
     return NULL;
 }
