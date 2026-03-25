@@ -14,6 +14,13 @@
 #define SPI_SCLK_PIN            12
 #define SPI_SDOUT_PIN           13
 
+#define IMU_INT1_PIN            48
+#define IMU_INT2_PIN            47
+
+// I2C
+#define I2C_SDA_PIN             21
+#define I2C_SCL_PIN             26
+
 // DRIVERS
 #define LEFT_MOTOR_DIR_PIN      36
 #define LEFT_MOTOR_VEL_PIN      35

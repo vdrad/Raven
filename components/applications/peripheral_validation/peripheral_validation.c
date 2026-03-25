@@ -23,6 +23,7 @@
 #include "buzzer.h"
 #include "battery_sensor.h"
 #include "AD7490.h"
+#include "ICM45686.h"
 
 #define TAG "VLD"
 
@@ -81,7 +82,10 @@ void peripheral_validation(peripheral_to_validate_t peripheral) {
             battery_sensor_peripheral_validation();
             break;
         case PERIPHERAL_AD7490:
-            AD7490_peripheral_validation(false);
+            AD7490_peripheral_validation();
+            break;
+        case PERIPHERAL_ICM45686:
+            ICM45686_peripheral_validation();
             break;
 
         default:
@@ -114,10 +118,11 @@ static peripheral_validation_cmd_type_t command_decoder(char *payload) {
 static void validate_all_peripherals(void) {
     // 1. Define the Test Suite using an array of structs
     peripheral_test_t test_suite[] = {
-        {"RGB LED", rgb_led_peripheral_validation,         false},
-        {"BUZZER",  buzzer_peripheral_validation,          false},
-        {"BATTERY", battery_sensor_peripheral_validation,  false},
-        {"AD7490",  AD7490_peripheral_validation,          false}
+        {"RGB LED",   rgb_led_peripheral_validation,         false},
+        {"BUZZER",    buzzer_peripheral_validation,          false},
+        {"BATTERY",   battery_sensor_peripheral_validation,  false},
+        {"AD7490",    AD7490_peripheral_validation,          false},
+        {"ICM45686",  ICM45686_peripheral_validation,          false}
         // To add a new device, just add one line here! e.g., {"Infrared", ir_validate, false}
     };
     
@@ -156,7 +161,7 @@ static void validate_all_peripherals(void) {
     // 3. Sequential Validation Loop
     for (uint8_t i = 0; i < num_tests; i++) {
         raven_comm_send_message(TAG, "=====================================");
-        raven_comm_send_message(TAG, "Testing [%s]. Observe the hardware.", test_suite[i].name);
+        raven_comm_send_message(TAG, "Testing [%s].", test_suite[i].name);
         raven_comm_send_message(TAG, "Send 'VPASS', 'VFAIL', or 'VABORT'.");
         
         // Trigger the specific hardware function

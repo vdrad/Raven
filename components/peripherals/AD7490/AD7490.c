@@ -283,9 +283,9 @@ void AD7490_benchmark_read(void) {
     float max_us = (float)max_cycles / cycles_per_us;
 
     // 5. Print the report through the robot's communication system
-    raven_comm_send_message(TAG, "--- AD7490 Benchmark (%d array readings) ---", 1000);
-    raven_comm_send_message(TAG, "CPU Clock:    %lu MHz", cycles_per_us);
-    raven_comm_send_message(TAG, "Average Time: %.3f us (%lu cycles)", avg_us, avg_cycles);
-    raven_comm_send_message(TAG, "Min Time:     %.3f us (%lu cycles)", min_us, min_cycles);
-    raven_comm_send_message(TAG, "Max Time:     %.3f us (%lu cycles)", max_us, max_cycles);
+    RAVEN_LOGI(TAG, "--- AD7490 Benchmark (%d array readings) ---", 1000);
+    RAVEN_LOGI(TAG, "CPU Clock:    %lu MHz", cycles_per_us);
+    RAVEN_LOGI(TAG, "Average Time: %.3f us (%lu cycles)", avg_us, avg_cycles);
+    RAVEN_LOGI(TAG, "Min Time:     %.3f us (%lu cycles)", min_us, min_cycles);
+    RAVEN_LOGI(TAG, "Max Time:     %.3f us (%lu cycles)", max_us, max_cycles);
 }
