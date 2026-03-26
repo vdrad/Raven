@@ -8,6 +8,7 @@ typedef enum {
     PERIPHERAL_BATTERY_SENSOR,
     PERIPHERAL_AD7490,
     PERIPHERAL_ICM45686,
+    PERIPHERAL_ENCODER
 } peripheral_to_validate_t;
 
 // FUNCTIONS

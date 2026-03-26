@@ -17,6 +17,11 @@
 #define IMU_INT1_PIN            48
 #define IMU_INT2_PIN            47
 
+#define LEFT_ENCODER_A_PIN      41
+#define LEFT_ENCODER_B_PIN      42
+#define RIGHT_ENCODER_A_PIN     2 
+#define RIGHT_ENCODER_B_PIN     5
+
 // I2C
 #define I2C_SDA_PIN             21
 #define I2C_SCL_PIN             26

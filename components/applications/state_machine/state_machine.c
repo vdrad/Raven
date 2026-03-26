@@ -27,6 +27,7 @@
 #include "battery_sensor.h"
 #include "AD7490.h"
 #include "ICM45686.h"
+#include "encoder.h"
 
 #define TAG "SMA"
 
@@ -204,6 +205,7 @@ static void *state_initialization(void *args) {
     battery_sensor_init();
     AD7490_init();
     ICM45686_init();
+    encoder_init();
 
     raven_comm_send_message(TAG, "All devices initialized.");
     REQUEST_STATE(state_configuration);
@@ -229,9 +231,12 @@ static void *state_test(void *args) {
     // AD7490_peripheral_validation();
     // AD7490_benchmark_read();
     // ICM45686_peripheral_validation();
-    ICM45686_benchmark_read();
+    // ICM45686_benchmark_read();
     // ICM45686_i2c_scan();
-    vTaskDelay(pdMS_TO_TICKS(2000));
+
+    encoder_peripheral_validation();
+
+    vTaskDelay(pdMS_TO_TICKS(10));
     return NULL;
 }
 
