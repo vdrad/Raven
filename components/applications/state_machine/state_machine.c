@@ -27,8 +27,8 @@
 #include "battery_sensor.h"
 #include "AD7490.h"
 #include "ICM45686.h"
-#include "encoder.h"
 #include "motor.h"
+#include "odometry.h"
 
 #define TAG "SMA"
 
@@ -207,7 +207,7 @@ static void *state_initialization(void *args) {
     AD7490_init();
     ICM45686_init();
     motor_init();
-    encoder_init();
+    odometry_init();
 
     raven_comm_send_message(TAG, "All devices initialized.");
     REQUEST_STATE(state_configuration);
@@ -235,12 +235,12 @@ static void *state_test(void *args) {
     // ICM45686_peripheral_validation();
     // ICM45686_benchmark_read();
     // ICM45686_i2c_scan();
-
     // encoder_peripheral_validation();
-
     motor_set_voltage(MOTOR_RIGHT, 1.0f);
+    odometry_data_t odometry_data = odometry_get_data();
+    RAVEN_LOGI("TST", "Right Vel: %.2f | Distance: %.2fm", odometry_data.velocity_right_mm_s, odometry_data.distance_traveled_robot_m);
 
-    vTaskDelay(pdMS_TO_TICKS(2000));
+    vTaskDelay(pdMS_TO_TICKS(100));
     return NULL;
 }
 

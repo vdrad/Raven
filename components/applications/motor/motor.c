@@ -93,7 +93,7 @@ void motor_set_voltage(motor_id_t id, float voltage) {
     // Calculate raw PWM ticks needed to achieve the target voltage
     int32_t pwm_ticks = (int32_t)round((voltage / battery_voltage) * (float)MOTOR_DUTY_TICK_MAX);
 
-    RAVEN_LOGI(TAG, "Requested: %.2fV | Battery: %.2fV | PWM: %ld", voltage, battery_voltage, pwm_ticks);
+    // RAVEN_LOGI(TAG, "Requested: %.2fV | Battery: %.2fV | PWM: %ld", voltage, battery_voltage, pwm_ticks);
 
     // Hardware abstraction layer handles negative ticks automatically
     DRV8874_set_pwm_value(motors[id].handle, pwm_ticks); // Updated to remove max_ticks parameter
