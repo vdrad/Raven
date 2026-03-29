@@ -28,6 +28,7 @@
 #include "AD7490.h"
 #include "ICM45686.h"
 #include "encoder.h"
+#include "motor.h"
 
 #define TAG "SMA"
 
@@ -205,6 +206,7 @@ static void *state_initialization(void *args) {
     battery_sensor_init();
     AD7490_init();
     ICM45686_init();
+    motor_init();
     encoder_init();
 
     raven_comm_send_message(TAG, "All devices initialized.");
