@@ -1,5 +1,18 @@
 #pragma once
 
+#define BATTERY_3S 0
+#define BATTERY_4S 1
+#define CURRENT_BATTERY BATTERY_3S
+
+// Define voltage thresholds based on the battery cell count
+#if CURRENT_BATTERY == BATTERY_3S
+    #define BATTERY_MONITORING_HIGH_VOLTAGE (4.0f * 3)
+    #define BATTERY_MONITORING_LOW_VOLTAGE  (3.7f * 3)
+#else
+    #define BATTERY_MONITORING_HIGH_VOLTAGE (4.0f * 4)
+    #define BATTERY_MONITORING_LOW_VOLTAGE  (3.7f * 4)
+#endif
+
 /**
  * @brief Represents the current operational state of the battery.
  */
