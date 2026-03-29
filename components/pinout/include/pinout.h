@@ -31,10 +31,10 @@
 #define LEFT_MOTOR_VEL_PIN      35
 #define LEFT_MOTOR_CUR_PIN      1
 
-#define RIGHT_MOTOR_DIR_PIN     17  // Momentarily switch with FAN pins 
-#define RIGHT_MOTOR_VEL_PIN     16  // Momentarily switch with FAN pins 
-#define RIGHT_MOTOR_CUR_PIN     18  // Momentarily switch with FAN pins 
+#define RIGHT_MOTOR_DIR_PIN     16   
+#define RIGHT_MOTOR_VEL_PIN     17   
+#define RIGHT_MOTOR_CUR_PIN     18   
 
-#define FAN_MOTOR_DIR_PIN       8   // Momentarily switch with FAN pins 
-#define FAN_MOTOR_VEL_PIN       9   // Momentarily switch with FAN pins 
-#define FAN_MOTOR_CUR_PIN       7   // Momentarily switch with FAN pins
+#define FAN_MOTOR_DIR_PIN       8    
+#define FAN_MOTOR_VEL_PIN       9    
+#define FAN_MOTOR_CUR_PIN       7   
