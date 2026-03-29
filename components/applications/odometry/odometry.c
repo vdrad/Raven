@@ -45,3 +45,6 @@ float odometry_get_travelled_distance(bool milimeters) {
     return distance_travelled / 1000.0f;
 }
 
+// float odometry_get_right_motor_speed() {
+
+// }

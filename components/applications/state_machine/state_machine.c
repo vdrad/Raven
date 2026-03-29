@@ -236,9 +236,11 @@ static void *state_test(void *args) {
     // ICM45686_benchmark_read();
     // ICM45686_i2c_scan();
 
-    encoder_peripheral_validation();
+    // encoder_peripheral_validation();
 
-    vTaskDelay(pdMS_TO_TICKS(10));
+    motor_set_voltage(MOTOR_RIGHT, 1.0f);
+
+    vTaskDelay(pdMS_TO_TICKS(2000));
     return NULL;
 }
 

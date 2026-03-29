@@ -8,6 +8,7 @@
 #include "motor.h"
 #include "DRV8874.h"
 #include "pinout.h"
+#include "raven_log.h"
 #include "raven_comm.h"
 #include "battery_sensor.h"
 #include "freertos/FreeRTOS.h"
@@ -34,7 +35,7 @@ typedef struct {
     const char *name;
     uint32_t pin_in1;
     uint32_t pin_in2;
-    bdc_motor_handle_t handle;
+    drv8874_handle_t handle; // Updated to use the native opaque pointer
 } motor_instance_t;
 
 /* * Array containing all robot motors. 
@@ -46,26 +47,22 @@ static motor_instance_t motors[MOTOR_MAX_COUNT] = {
 };
 
 /**
- * @brief Initializes all configured motors and their MCPWM hardware.
+ * @brief Initializes all configured motors and their native MCPWM hardware.
  */
 void motor_init(void) {
     if (initialized) return;
 
-    // Shared MCPWM timer configuration for all motors
-    bdc_motor_mcpwm_config_t mcpwm_config = {
-        .group_id = 0,
-        .resolution_hz = MOTOR_TIMER_RESOLUTION_HZ,
-    };
-
-    // Iterate through the array to initialize each motor automatically
+    // Iterate through the array to initialize each motor automatically using the native HAL
     for (int i = 0; i < MOTOR_MAX_COUNT; i++) {
-        bdc_motor_config_t motor_config = {
-            .pwma_gpio_num = motors[i].pin_in1,
-            .pwmb_gpio_num = motors[i].pin_in2,
+        drv8874_config_t config = {
+            .pin_in1 = motors[i].pin_in1,
+            .pin_in2 = motors[i].pin_in2,
             .pwm_freq_hz = MOTOR_FREQUENCY_HZ,
+            .resolution_hz = MOTOR_TIMER_RESOLUTION_HZ,
+            .group_id = 0
         };
 
-        DRV8874_init(&motor_config, &mcpwm_config, &motors[i].handle);
+        DRV8874_init(&config, &motors[i].handle);
     }
 
     initialized = true;
@@ -96,8 +93,10 @@ void motor_set_voltage(motor_id_t id, float voltage) {
     // Calculate raw PWM ticks needed to achieve the target voltage
     int32_t pwm_ticks = (int32_t)round((voltage / battery_voltage) * (float)MOTOR_DUTY_TICK_MAX);
 
+    RAVEN_LOGI(TAG, "Requested: %.2fV | Battery: %.2fV | PWM: %ld", voltage, battery_voltage, pwm_ticks);
+
     // Hardware abstraction layer handles negative ticks automatically
-    DRV8874_set_pwm_value(motors[id].handle, pwm_ticks, MOTOR_DUTY_TICK_MAX);
+    DRV8874_set_pwm_value(motors[id].handle, pwm_ticks); // Updated to remove max_ticks parameter
 }
 
 /**
