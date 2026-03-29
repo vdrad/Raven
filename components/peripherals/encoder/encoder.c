@@ -26,7 +26,7 @@ typedef struct {
 
 /* Static instances: Private to this file to ensure encapsulation */
 static encoder_t left_encoder = { .gpio_a = LEFT_ENCODER_A_PIN, .gpio_b = LEFT_ENCODER_B_PIN };
-static encoder_t right_encoder = { .gpio_a = RIGHT_ENCODER_A_PIN, .gpio_b = RIGHT_ENCODER_B_PIN };
+static encoder_t right_encoder = { .gpio_a = RIGHT_ENCODER_B_PIN, .gpio_b = RIGHT_ENCODER_A_PIN };
 
 /**< Flag to track the initialization state of the encoder module */
 static bool initialized = false;
@@ -38,10 +38,9 @@ static bool initialized = false;
  * * @param[in,out] enc Pointer to the encoder instance structure to initialize.
  */
 static void encoder_init_instance(encoder_t *enc) {
-    /* Basic unit configuration: allow accumulation beyond limits */
     pcnt_unit_config_t unit_config = {
-        .high_limit = 10000,
-        .low_limit = -10000,
+        .high_limit = 32767,
+        .low_limit = -32767,
         .flags.accum_count = 1, 
     };
 
@@ -55,6 +54,9 @@ static void encoder_init_instance(encoder_t *enc) {
         raven_comm_send_message(TAG, "ERROR: Failed to create PCNT unit");
         return;
     }
+
+    pcnt_unit_add_watch_point(enc->unit_handle, 32767);
+    pcnt_unit_add_watch_point(enc->unit_handle, -32767);
 
     /* Apply the noise filter */
     pcnt_unit_set_glitch_filter(enc->unit_handle, &filter_config);
