@@ -26,7 +26,7 @@ static bool initialized = false;
 #define MOTOR_FREQUENCY_HZ        50000    // 50 kHz
 #define MOTOR_DUTY_TICK_MAX       (MOTOR_TIMER_RESOLUTION_HZ / MOTOR_FREQUENCY_HZ)
 
-#define MOTOR_MAX_VOLTAGE_ALLOWED  3.0f // todo: go back to this later BATTERY_MONITORING_HIGH_VOLTAGE
+#define MOTOR_MAX_VOLTAGE_ALLOWED BATTERY_MONITORING_HIGH_VOLTAGE
 
 /**
  * @brief Internal structure mapping application context to hardware handles.

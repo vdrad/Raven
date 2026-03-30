@@ -29,6 +29,7 @@
 #include "ICM45686.h"
 #include "motor.h"
 #include "odometry.h"
+#include "controller.h"
 
 #define TAG "SMA"
 
@@ -67,6 +68,7 @@ typedef enum {
     SMA_CMD_UNKNOWN = 0,                    /**< Unrecognized command header. */
     SMA_CMD_ENTER_TESTING_STATE,            /**< State Machine command (Header: 'S', Payload: 'TST'). */
     SMA_CMD_ENTER_VALIDATION_STATE,         /**< Hardware validation command (Header: 'S', Payload: 'VLD'). */
+    SMA_CMD_ENTER_PID_TUNING_STATE,         /**< PID Tuning command (Header: 'S', Payload: 'PID'). */
 } state_machine_cmd_type_t;
 
 /* ========================================================================== */
@@ -79,6 +81,7 @@ ADD_STATE(initialization);
 ADD_STATE(configuration);
 ADD_STATE(test);
 ADD_STATE(validation);
+ADD_STATE(pid_tuning);
 
 // --- Private Helpers ---
 static state_machine_cmd_type_t command_decoder(char *payload);
@@ -208,6 +211,7 @@ static void *state_initialization(void *args) {
     ICM45686_init();
     motor_init();
     odometry_init();
+    controller_init();
 
     raven_comm_send_message(TAG, "All devices initialized.");
     REQUEST_STATE(state_configuration);
@@ -236,11 +240,15 @@ static void *state_test(void *args) {
     // ICM45686_benchmark_read();
     // ICM45686_i2c_scan();
     // encoder_peripheral_validation();
-    motor_set_voltage(MOTOR_RIGHT, 1.0f);
-    odometry_data_t odometry_data = odometry_get_data();
-    RAVEN_LOGI("TST", "Right Vel: %.2f | Distance: %.2fm", odometry_data.velocity_right_mm_s, odometry_data.distance_traveled_robot_m);
+    // motor_set_voltage(MOTOR_RIGHT, 1.0f);
+    // odometry_update();
+    // odometry_data_t odometry_data = odometry_get_data();
+    // RAVEN_LOGI("TST", "Right Vel: %.1f | Distance: %.2fm", odometry_data.velocity_right_mm_s/1000.0f, odometry_data.distance_traveled_robot_m);
+    // vTaskDelay(pdMS_TO_TICKS(10));
 
-    vTaskDelay(pdMS_TO_TICKS(100));
+    // controller_run();
+    // controller_pid_tuner();
+
     return NULL;
 }
 
@@ -253,6 +261,17 @@ static void *state_validation(void *args) {
     
     // Delay to yield to other tasks and prevent hardware watchdog triggers
     vTaskDelay(pdMS_TO_TICKS(1000));
+    return NULL;
+}
+
+/**
+ * @brief Perform PID Tuning.
+ * @return NULL
+ */
+static void *state_pid_tuning(void *args) {
+    controller_tune_drive_motors();
+    REQUEST_STATE(state_configuration);
+
     return NULL;
 }
 
@@ -284,6 +303,7 @@ static void apply_pending_state_transition(void) {
 static state_machine_cmd_type_t command_decoder(char *payload) {
     if (strcmp(payload, "TST") == 0) return SMA_CMD_ENTER_TESTING_STATE;
     if (strcmp(payload, "VLD") == 0) return SMA_CMD_ENTER_VALIDATION_STATE;
+    if (strcmp(payload, "PID") == 0) return SMA_CMD_ENTER_PID_TUNING_STATE;
 
     raven_comm_send_message(TAG, "Invalid input '%s'. Expecting 'STST' or 'SVLD'.", payload);
     return SMA_CMD_UNKNOWN;
@@ -327,6 +347,10 @@ static void state_machine_commands_task(void *pvParameters) {
 
                 case SMA_CMD_ENTER_VALIDATION_STATE:
                     REQUEST_STATE(state_validation);
+                    break;
+
+                case SMA_CMD_ENTER_PID_TUNING_STATE:
+                    REQUEST_STATE(state_pid_tuning);
                     break;
 
                 default:

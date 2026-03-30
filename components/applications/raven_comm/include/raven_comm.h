@@ -30,9 +30,10 @@
  * from the external controller (e.g., 'V' for CMD_VALIDATION).
  */
 typedef enum {
-    CMD_UNKNOWN = 0,     /**< Unrecognized command header. */
-    CMD_VALIDATION,      /**< Hardware or peripheral validation command (Header: 'V'). */
-    CMD_STATE_MACHINE,   /**< State Machine command (Header: 'S'). */
+    CMD_UNKNOWN = 0,        /**< Unrecognized command header. */
+    CMD_VALIDATION,         /**< Hardware or peripheral validation command (Header: 'V'). */
+    CMD_STATE_MACHINE,      /**< State Machine command (Header: 'S'). */
+    CMD_CONTROLLER_TUNING,  /**< PID Controller command (Header: 'P'). */
 
     CMD_MAX
 } robot_cmd_type_t;
