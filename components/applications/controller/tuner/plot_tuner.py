@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from tkinter import filedialog
 import io
+import re
 
 # ==========================================
 # VISUAL IDENTITY
@@ -13,12 +14,12 @@ BG_COLOR = "#1E1E24"
 PANEL_COLOR = "#282931"   
 ACCENT_COLOR = "#8A2BE2"  
 
-# Motor 0 (Left) Colors - Trocado para refletir L=0
-READING_0_COLOR = "#FF1C42" # Cyan
-OUTPUT_0_COLOR = "#2EFFD2"  # Orange
+# Motor 0 (Left) Colors
+READING_0_COLOR = "#FF1C42" # Red/Pink
+OUTPUT_0_COLOR = "#2EFFD2"  # Cyan
 ERROR_0_COLOR = "#FFD700"   # Yellow
 
-# Motor 1 (Right) Colors - Trocado para refletir R=1
+# Motor 1 (Right) Colors
 READING_1_COLOR = "#742BB8" # Purple
 OUTPUT_1_COLOR = "#71F160"  # Neon Green
 ERROR_1_COLOR = "#FF4D4D"   # Red
@@ -30,11 +31,12 @@ SUBTITLE_FONT = ("Segoe UI", 14, "bold")
 MONO_FONT = ("Segoe UI", 16, "bold") 
 
 class DataProcessor:
-    """Processes 16-column dual motor logs."""
+    """Processes 10-column dual motor logs with Metadata Header for Trapezoidal Profiles."""
     
     @staticmethod
     def parse_log_file(filepath):
         csv_data = []
+        metadata_line = ""
         is_capturing = False
         
         with open(filepath, 'r', encoding='utf-8') as file:
@@ -46,13 +48,30 @@ class DataProcessor:
                     break
                 if is_capturing and "TUNER:" in line:
                     clean_line = line.split("TUNER:")[1].strip()
-                    csv_data.append(clean_line)
+                    # Capture the new Metadata row for PID Gains
+                    if clean_line.startswith("Metadata"):
+                        metadata_line = clean_line
+                    else:
+                        csv_data.append(clean_line)
         
         if not csv_data:
             raise ValueError("No CSV data found.")
             
         df = pd.read_csv(io.StringIO('\n'.join(csv_data)))
         
+        # Parse Metadata for Gains using Regex
+        gains = {"0": {"p": 0.0, "i": 0.0, "d": 0.0}, "1": {"p": 0.0, "i": 0.0, "d": 0.0}}
+        if metadata_line:
+            for suffix in ["0", "1"]:
+                match = re.search(f"PID_{suffix}\\(P:([\\d.]+) I:([\\d.]+) D:([\\d.]+)\\)", metadata_line)
+                if match:
+                    gains[suffix]["p"] = float(match.group(1))
+                    gains[suffix]["i"] = float(match.group(2))
+                    gains[suffix]["d"] = float(match.group(3))
+        
+        # Store gains inside the dataframe attributes for easy access
+        df.attrs['gains'] = gains
+
         if not df.empty:
             df['Tick'] = df['Tick'] - df['Tick'].iloc[0]
             df['Time_ms'] = (df['DeltaTime_us'].cumsum() - df['DeltaTime_us'].iloc[0]) / 1000.0
@@ -70,22 +89,29 @@ class DataProcessor:
         if df.empty or f'Setpoint_{suffix}' not in df.columns: 
             return 0, 0, 0, 0, 0, 0, 0, 0
             
-        setpoint = df[f'Setpoint_{suffix}'].iloc[0]
-        max_reading = df[f'Reading_{suffix}'].max()
-        overshoot = max(0, max_reading - setpoint)
+        # 1. Max Tracking Error (Worst case deviation)
+        max_track_err = df[f'Error_{suffix}'].abs().max()
+        
+        # 2. Overall RMSE (Root Mean Square Error for the whole profile)
         rmse = np.sqrt((df[f'Error_{suffix}'] ** 2).mean())
         
-        crossed = df[df[f'Reading_{suffix}'] >= setpoint]
-        rise_time = crossed['Time_ms'].iloc[0] if not crossed.empty else 0.0
+        # 3. Cruise RMSE (Error only during the flat top of the trapezoid)
+        max_setpoint = df[f'Setpoint_{suffix}'].max()
+        # Consider "Cruise" as any time the setpoint is above 99% of its maximum
+        cruise_mask = df[f'Setpoint_{suffix}'] >= (max_setpoint * 0.99)
+        if cruise_mask.any():
+            cruise_rmse = np.sqrt((df.loc[cruise_mask, f'Error_{suffix}'] ** 2).mean())
+        else:
+            cruise_rmse = 0.0
         
         avg_dt = df['DeltaTime_us'].iloc[1:].mean() if len(df) > 1 else 0
         freq = 1000000.0 / avg_dt if avg_dt > 0 else 0
         
-        kp = df[f'kp_{suffix}'].iloc[0] if f'kp_{suffix}' in df.columns else 0.0
-        ki = df[f'ki_{suffix}'].iloc[0] if f'ki_{suffix}' in df.columns else 0.0
-        kd = df[f'kd_{suffix}'].iloc[0] if f'kd_{suffix}' in df.columns else 0.0
+        # Retrieve gains parsed from metadata
+        gains = df.attrs.get('gains', {}).get(suffix, {"p": 0.0, "i": 0.0, "d": 0.0})
+        kp, ki, kd = gains["p"], gains["i"], gains["d"]
         
-        return overshoot, rmse, rise_time, avg_dt, freq, kp, ki, kd
+        return max_track_err, rmse, cruise_rmse, avg_dt, freq, kp, ki, kd
 
 class DarkToolbar(NavigationToolbar2Tk):
     def __init__(self, canvas, window):
@@ -183,7 +209,6 @@ class TelemetryPlotter:
         if df is None or df.empty: return
         x = df['Tick']
 
-        # Determine Target Line (Assuming Setpoint is identical for both motors in a straight line)
         if show_0 and 'Setpoint_0' in df.columns:
             self.ax1.plot(x, df['Setpoint_0'], color=SETPOINT_COLOR, label='Target', linewidth=1.2, linestyle='--', alpha=0.6)
         elif show_1 and 'Setpoint_1' in df.columns:
@@ -209,7 +234,6 @@ class TelemetryPlotter:
 
         self.ax3.axhline(y=0, color='white', linestyle='-', alpha=0.2)
         
-        # FIX APLICADO: Somente tentar plotar as legendas se houver artistas na tela
         if self.ax1.get_legend_handles_labels()[0]:
             self.ax1.legend(loc='lower right', facecolor=PANEL_COLOR, labelcolor='white', fontsize=8)
         if self.ax2.get_legend_handles_labels()[0]:
@@ -218,7 +242,6 @@ class TelemetryPlotter:
         if len(x) > 0:
             self.ax1.set_xlim(left=0, right=x.max())
         
-        # Trigger an auto-scale calculation for the new data
         self.on_xlims_change(self.ax1)
         self.canvas.draw()
 
@@ -251,7 +274,6 @@ class PIDTunerDashboard(ctk.CTk):
         self.side_panel = ctk.CTkFrame(container, fg_color=BG_COLOR, width=320)
         self.side_panel.pack(side=ctk.LEFT, fill=ctk.Y, padx=(0, 20))
         
-        # Interactive Checkboxes - Agora com L(0) na esquerda e R(1) na direita
         toggle_frame = ctk.CTkFrame(self.side_panel, fg_color=PANEL_COLOR, corner_radius=8)
         toggle_frame.pack(fill=ctk.X, pady=(0, 15), ipady=5)
         
@@ -263,12 +285,12 @@ class PIDTunerDashboard(ctk.CTk):
         ctk.CTkCheckBox(toggle_frame, text="Right (1)", variable=self.show_right_var, 
                         command=self.refresh_plots, fg_color=READING_1_COLOR, text_color=READING_1_COLOR).pack(side=ctk.RIGHT, padx=15, pady=10)
         
-        # KPI Cards
-        self.vars = {k: ctk.StringVar(value="--") for k in ["os", "rmse", "rise", "dt", "freq"]}
+        # New KPIs for Trapezoidal Profiles
+        self.vars = {k: ctk.StringVar(value="--") for k in ["max_err", "rmse", "cruise", "dt", "freq"]}
         
-        self.add_kpi("MAX OVERSHOOT [L | R]", self.vars["os"], "white")
-        self.add_kpi("RMSE ERROR [L | R]", self.vars["rmse"], "white")
-        self.add_kpi("RISE TIME [L | R] ms", self.vars["rise"], "white")
+        self.add_kpi("MAX TRACK ERR [L | R]", self.vars["max_err"], "white")
+        self.add_kpi("OVERALL RMSE [L | R]", self.vars["rmse"], "white")
+        self.add_kpi("CRUISE RMSE [L | R]", self.vars["cruise"], "white")
         self.add_kpi("AVG SAMPLE TIME [μs]", self.vars["dt"], "#AAAAAA")
         self.add_kpi("LOOP FREQUENCY [Hz]", self.vars["freq"], ACCENT_COLOR)
 
@@ -293,20 +315,20 @@ class PIDTunerDashboard(ctk.CTk):
                 self.current_df = self.processor.parse_log_file(path)
                 
                 # Metrics for Motor 0 (Left)
-                os0, rmse0, rise0, dt, freq, kp0, ki0, kd0 = self.processor.calculate_metrics(self.current_df, "0")
+                max_err0, rmse0, cruise0, dt, freq, kp0, ki0, kd0 = self.processor.calculate_metrics(self.current_df, "0")
                 # Metrics for Motor 1 (Right)
-                os1, rmse1, rise1, _, _, kp1, ki1, kd1 = self.processor.calculate_metrics(self.current_df, "1")
+                max_err1, rmse1, cruise1, _, _, kp1, ki1, kd1 = self.processor.calculate_metrics(self.current_df, "1")
                 
                 # Update KPI texts side-by-side (Left | Right)
-                self.vars["os"].set(f"{os0:.1f} | {os1:.1f}")
+                self.vars["max_err"].set(f"{max_err0:.1f} | {max_err1:.1f}")
                 self.vars["rmse"].set(f"{rmse0:.1f} | {rmse1:.1f}")
-                self.vars["rise"].set(f"{rise0:.1f} | {rise1:.1f}")
+                self.vars["cruise"].set(f"{cruise0:.1f} | {cruise1:.1f}")
                 self.vars["dt"].set(f"{dt:.1f}")
                 self.vars["freq"].set(f"{int(freq)}")
                 
                 # Update Gains (Left | Right)
-                gains_txt = (f"L0: P={kp0:.4f} I={ki0:.4f} D={kd0:.4f}  ||  "
-                             f"R1: P={kp1:.4f} I={ki1:.4f} D={kd1:.4f}")
+                gains_txt = (f"L0: P={kp0:.5f} I={ki0:.5f} D={kd0:.5f}  ||  "
+                             f"R1: P={kp1:.5f} I={ki1:.5f} D={kd1:.5f}")
                 self.gain_info.set(gains_txt)
                 
                 self.refresh_plots()
