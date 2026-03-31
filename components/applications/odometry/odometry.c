@@ -14,6 +14,10 @@
 #define TAG "ODM"
 static bool initialized = false;
 
+/* --- ODOMETRY FILTER CONFIGURATION --- */
+#define USE_EMA_FILTER 1          // Set to 1 to enable EMA filter, 0 to bypass it
+#define ODOMETRY_EMA_ALPHA 0.2f   // Smoothing factor: 0.0 (ignore new) to 1.0 (no smoothing)
+
 /* Mechanical Constants */
 #define ENCODER_GEAR_TEETH  12.0f
 #define WHEEL_GEAR_TEETH    60.0f
@@ -31,6 +35,11 @@ static odometry_data_t current_odom_data = {0};
 static int last_left_count = 0;
 static int last_right_count = 0;
 static int64_t last_time_us = 0;
+
+#if USE_EMA_FILTER
+static float filtered_vel_left = 0.0f;
+static float filtered_vel_right = 0.0f;
+#endif
 
 void odometry_update(void) {
     if (!initialized) return;
@@ -57,14 +66,27 @@ void odometry_update(void) {
     float delta_dist_left_mm = (float)delta_left * MM_PER_TICK;
     float delta_dist_right_mm = (float)delta_right * MM_PER_TICK;
 
-    // v = delta_s / dt
-    current_odom_data.velocity_left_mm_s  = delta_dist_left_mm / dt_s;
-    current_odom_data.velocity_right_mm_s = delta_dist_right_mm / dt_s;
-    
-    // Robot linear speed (mm/s)
-    current_odom_data.velocity_robot_mm_s = (current_odom_data.velocity_left_mm_s + current_odom_data.velocity_right_mm_s) / 2.0f;
+    // Calculate raw velocity in m/s
+    float raw_vel_left = (delta_dist_left_mm / dt_s) / 1000.0f;
+    float raw_vel_right = (delta_dist_right_mm / dt_s) / 1000.0f;
 
-    // Calculate absolute distance travelled
+#if USE_EMA_FILTER
+    // Apply Exponential Moving Average (EMA) filter
+    filtered_vel_left = (ODOMETRY_EMA_ALPHA * raw_vel_left) + ((1.0f - ODOMETRY_EMA_ALPHA) * filtered_vel_left);
+    filtered_vel_right = (ODOMETRY_EMA_ALPHA * raw_vel_right) + ((1.0f - ODOMETRY_EMA_ALPHA) * filtered_vel_right);
+    
+    current_odom_data.velocity_left_m_s = filtered_vel_left;
+    current_odom_data.velocity_right_m_s = filtered_vel_right;
+#else
+    // Bypass filter, pass raw data directly to PID
+    current_odom_data.velocity_left_m_s = raw_vel_left;
+    current_odom_data.velocity_right_m_s = raw_vel_right;
+#endif
+
+    // Robot linear speed (m/s)
+    current_odom_data.velocity_robot_m_s = (current_odom_data.velocity_left_m_s + current_odom_data.velocity_right_m_s) / 2.0f;
+
+    // Calculate absolute distance travelled (m)
     float distance_travelled = (float)(left_count + right_count) / 2.0f;
     distance_travelled *= MM_PER_TICK;
     distance_travelled /= 1000.0f;
@@ -92,4 +114,26 @@ void odometry_init(void) {
 
 odometry_data_t odometry_get_data(void) {
     return current_odom_data;
+}
+
+void odometry_reset(void) {
+    if (!initialized) return;
+
+    // 1. Reset hardware tick baselines
+    encoder_get_count(ENCODER_LEFT, &last_left_count);
+    encoder_get_count(ENCODER_RIGHT, &last_right_count);
+    
+    // 2. Reset time baseline to NOW
+    last_time_us = esp_timer_get_time();
+
+    // 3. Wipe the EMA filter memory
+#if USE_EMA_FILTER
+    filtered_vel_left = 0.0f;
+    filtered_vel_right = 0.0f;
+#endif
+
+    // 4. Zero out the current struct
+    current_odom_data.velocity_left_m_s = 0.0f;
+    current_odom_data.velocity_right_m_s = 0.0f;
+    current_odom_data.velocity_robot_m_s = 0.0f;
 }

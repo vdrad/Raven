@@ -11,9 +11,9 @@
  * @brief Structure containing the real-time kinematic data of the robot.
  */
 typedef struct {
-    float velocity_left_mm_s;        /**< Current left wheel speed in mm/s */
-    float velocity_right_mm_s;       /**< Current right wheel speed in mm/s */
-    float velocity_robot_mm_s;       /**< Current linear speed of the robot center in mm/s */
+    float velocity_left_m_s;        /**< Current left wheel speed in mm/s */
+    float velocity_right_m_s;       /**< Current right wheel speed in mm/s */
+    float velocity_robot_m_s;       /**< Current linear speed of the robot center in mm/s */
     float distance_traveled_robot_m; /**< Absolute distance traveled by the robot in meters */
 } odometry_data_t;
 
@@ -35,3 +35,5 @@ void odometry_update(void);
  * @return odometry_data_t copy of the current speeds and distance.
  */
 odometry_data_t odometry_get_data(void);
+
+void odometry_reset(void);
