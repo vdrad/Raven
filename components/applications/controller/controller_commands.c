@@ -8,6 +8,8 @@
  * COMMAND PARSER & TUNING TASK
  * ========================================================================= */
 
+#define TAG "CTR"
+
 /**
  * @brief Internal commands recognized by the Controller command decoder.
  */
@@ -118,8 +120,9 @@ void controller_commands_task(void *pvParameters) {
                 case CON_CMD_GET_PARAMS:
                     updated = true; 
                     break;
+
                 default:
-                    raven_comm_send_message("CTRL", "Invalid CMD. Format: [Target],[CMD],[Val]. Ex: R,P,1.5");
+                    raven_comm_send_message(TAG, "Invalid CMD. Format: [Target],[CMD],[Val]. Ex: R,P,1.5");
                     break;
             }
 
@@ -128,11 +131,11 @@ void controller_commands_task(void *pvParameters) {
                 reset_pid_residuals(target_pid);
                 
                 snprintf(response, sizeof(response), 
-                         "%c-PID | P:%.6f I:%.6f D:%.6f SP:%.1f", 
+                         "%c-PID | P:%.6f I:%.6f D:%.6f SP:%.2f", 
                          cmd.target, target_pid->kP, target_pid->kI, 
                          target_pid->kD, target_pid->setpoint);
                          
-                raven_comm_send_message("CTRL", response); // todo: adjust this tag
+                raven_comm_send_message(TAG, response);
             }
         }
         

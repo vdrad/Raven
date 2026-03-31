@@ -21,32 +21,32 @@
 
 /* --- GLOBAL PID INSTANCES --- */
 pid_context_t right_motor_pid = {
-    .kP     = 0.002f,               
-    .kI     = 0.07f,               
+    .kP     = 1.00f,               
+    .kI     = 70.0f,               
     .kD     = 0.0f,               
     .bias   = 0.0f,             
 
-    .setpoint = 1500.0f,        
+    .setpoint = 1.500f,        
     .current_reading = 0.0f,  
 
     .integral_sum     = 0.0f,
-    .max_integral_sum = 20.0f,
+    .max_integral_sum = 1000.0f,
 
     .max_output =  BATTERY_MONITORING_HIGH_VOLTAGE,      
     .min_output = -BATTERY_MONITORING_HIGH_VOLTAGE,           
 };
 
 pid_context_t left_motor_pid = {
-    .kP     = 0.002f,               
-    .kI     = 0.07f,               
+    .kP     = 1.00f,               
+    .kI     = 70.0f,               
     .kD     = 0.0f,               
     .bias   = 0.0f,             
 
-    .setpoint = 1500.0f,        
+    .setpoint = 1.500f,        
     .current_reading = 0.0f,  
 
     .integral_sum     = 0.0f,
-    .max_integral_sum = 20.0f,
+    .max_integral_sum = 1000.0f,
 
     .max_output =  BATTERY_MONITORING_HIGH_VOLTAGE,      
     .min_output = -BATTERY_MONITORING_HIGH_VOLTAGE,           
@@ -67,8 +67,8 @@ void controller_motors_run(void) {
     odometry_data_t odom = odometry_get_data();
     
     // 2. Assign readings to the respective PIDs
-    left_motor_pid.current_reading = odom.velocity_left_mm_s;
-    right_motor_pid.current_reading = odom.velocity_right_mm_s;
+    left_motor_pid.current_reading = odom.velocity_left_m_s;
+    right_motor_pid.current_reading = odom.velocity_right_m_s;
     
     // 3. Compute both
     pid_compute(&left_motor_pid);
