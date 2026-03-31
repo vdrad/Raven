@@ -10,9 +10,6 @@
 
 #include "battery_sensor.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <math.h>
 
 // FreeRTOS
@@ -20,12 +17,11 @@
 #include "freertos/task.h"
 
 // ESP-IDF
-#include "soc/soc_caps.h"
-#include "esp_log.h"
 #include "esp_adc/adc_oneshot.h"
 
 // Project
 #include "pinout.h"
+#include "raven_log.h"
 #include "raven_comm.h"
 
 /* ========================================================================== */
@@ -135,7 +131,8 @@ void battery_sensor_init(void) {
     // Spawn the background reading task on Core 1
     xTaskCreatePinnedToCore(battery_sensor_task, "battery_sensor", 2048, NULL, 5, NULL, 1);
 
-    raven_comm_send_message(TAG, "Initialized successfully.");
+    RAVEN_LOGI(TAG, "Initialized successfully.");
+    raven_comm_send_message(TAG, "Battery Voltage: %.1fV", voltage_reading);
     initialized = true;
 }
 

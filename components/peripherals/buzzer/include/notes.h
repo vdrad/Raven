@@ -1,3 +1,10 @@
+/**
+ * @file notes.h
+ * @brief Standard musical note frequency definitions.
+ * * Maps standard musical notes (from B0 to DS8) to their corresponding 
+ * frequencies in Hertz for use with the buzzer module.
+ */
+
 #pragma once
 
 #define NOTE_REST 0 

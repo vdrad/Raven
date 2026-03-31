@@ -66,7 +66,8 @@ void motor_init(void) {
     }
 
     initialized = true;
-    raven_comm_send_message(TAG, "Initialized successfully.");
+    RAVEN_LOGI(TAG, "Initialized successfully.");
+    raven_comm_send_message(TAG, "PWM Frequency: %d kHz", MOTOR_FREQUENCY_HZ/1000);
 }
 
 /**

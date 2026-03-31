@@ -9,7 +9,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-// TODO: make tuning follow a trapezoid
 // TODO: clean raven_send_comm() and put relevant parameters instead of initialized successfully.
 // TODO: standardized code pattern, include, etc (ask for a fixed prompt)
 

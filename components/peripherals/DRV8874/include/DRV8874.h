@@ -1,11 +1,11 @@
-#pragma once
-
 /**
  * @file DRV8874.h
  * @brief Native Hardware Abstraction Layer for DRV8874 Motor Driver using ESP-IDF MCPWM.
  * * This module bypasses the bdc_motor library to gain explicit control over 
  * the IN1 and IN2 pins, enabling Slow Decay (active braking) behavior.
  */
+
+#pragma once
 
 #include <stdint.h>
 

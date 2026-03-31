@@ -4,14 +4,20 @@
  */
 
 #include "ICM45686.h"
+
+// FreeRTOS
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include <stdio.h>
+
+// Standard Math Library
 #include <math.h>
-#include "esp_log.h"
+
+// ESP-IDF Drivers
 #include "driver/i2c_master.h"
 #include "esp_cpu.h"
 #include "esp_rom_sys.h"
+
+// Project
 #include "pinout.h"
 #include "raven_log.h"
 #include "raven_comm.h"
@@ -389,7 +395,9 @@ void ICM45686_init(void) {
     }
 
     initialized = true;
-    raven_comm_send_message(TAG, "Initialized successfully.");
+    RAVEN_LOGI(TAG, "Initialized successfully.");
+    raven_comm_send_message(TAG, "Accelerometer ODR: %d Hz | FSR: %d g", ICM45686_ODR_3200HZ, ICM45686_ACCEL_FSR_8G);
+    raven_comm_send_message(TAG, "Gyroscope ODR: %d Hz | FSR: %d dps",   ICM45686_ODR_3200HZ, ICM45686_GYRO_FSR_4000DPS);
 }
 
 void ICM45686_get_data(icm45686_data_t *out_data) {

@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <math.h>
 
+#include "raven_log.h"
 #include "raven_comm.h"
 #include "encoder.h"
 #include "esp_timer.h" // Kept ONLY for high-precision time reading (esp_timer_get_time)
@@ -109,7 +110,12 @@ void odometry_init(void) {
     last_time_us = esp_timer_get_time();
 
     initialized = true;
-    raven_comm_send_message(TAG, "Initialized in procedural mode.");
+    RAVEN_LOGI(TAG, "Initialized in procedural mode.");
+    #if USE_EMA_FILTER
+        raven_comm_send_message(TAG, "Using EMA Filter %.1f Alpha", ODOMETRY_EMA_ALPHA);
+    #else
+        raven_comm_send_message(TAG, "Not using EMA Filter");
+    #endif
 }
 
 odometry_data_t odometry_get_data(void) {

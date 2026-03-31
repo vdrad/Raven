@@ -12,16 +12,12 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-// ESP-IDF SPI Master
-#include "driver/spi_master.h"
-#include "driver/gpio.h"
-
-
 /* ========================================================================== */
 /* MACROS & CONFIGURATIONS                                                    */
 /* ========================================================================== */
 
-#define AD7490_SPI_FREQUENCY_HZ     (10 * 1000 * 1000) /**< 10 MHz SPI Clock */
+/** @brief SPI Clock frequency set to 10 MHz. */
+#define AD7490_SPI_FREQUENCY_HZ     (10 * 1000 * 1000) 
 
 // AD7490 CONTROL REGISTER (CR) BIT VALUES
 #define AD7490_CR_WRITE_VALUE       1
@@ -41,9 +37,11 @@
 
 /**
  * @brief Initializes the SPI bus and the AD7490 device.
- *
+ * * Configures the ESP32 SPI master and performs the AD7490 power-up 
+ * and sequence configuration routines. Logs the initialization status
+ * and sends the configured SPI frequency via the communication link.
  */
-void AD7490_init();
+void AD7490_init(void);
 
 /**
  * @brief Reads all configured channels sequentially from the AD7490.
@@ -54,22 +52,17 @@ void AD7490_init();
 void AD7490_read_all_channels(uint16_t array[NUMBER_OF_ACTIVE_CHANNELS]);
 
 /**
- * @brief Executes a hardware validation routine, reading all channels and 
- * sending the raw output via the communication link.
+ * @brief Executes a hardware validation routine.
+ * * Forces a sequencer reset, reads all channels, and sends the raw SPI 
+ * output (embedded channel IDs) via the communication link to prove 
+ * hardware integrity and wire connections.
  */
-void AD7490_peripheral_validation();
+void AD7490_peripheral_validation(void);
 
 /**
  * @brief Executes a performance benchmark on the AD7490 SPI read function.
- * Calculates average, minimum, and maximum execution times across 1000 samples
- * for reading ALL active channels, using the internal CPU cycle counter.
- *
- * Benchmark Results (ESP32-S3 Mini 1U) for a full array read:
- * - Average Time: 350.0 us
- * - Minimum Time: 349.0 us
- * - Maximum Time: 365.0 us
- * - Equivalent Array Sampling Freq: ~2.85 kHz 
- * * Note: Consumes roughly 35% of a 1ms tick, leaving plenty of headroom 
- * to run a 1 kHz PID loop synchronously.
+ * * Calculates average, minimum, and maximum execution times across 1000 samples
+ * for reading ALL active channels, using the internal CPU cycle counter. Results
+ * are logged to the serial monitor.
  */
 void AD7490_benchmark_read(void);

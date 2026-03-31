@@ -1,11 +1,11 @@
-#pragma once
-
 /**
  * @file encoder.h
  * @brief Public API for the PCNT-based Quadrature Encoder module.
  * * This header defines the interfaces for initializing, reading, and 
  * resetting the high-speed encoders attached to the robot's motors.
  */
+
+#pragma once
 
 /**
  * @brief Identifiers for the robot's hardware encoders.
