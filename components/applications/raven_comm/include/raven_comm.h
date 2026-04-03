@@ -19,7 +19,6 @@
 #define RAVEN_COMM_MAX_MESSAGE_LEN  128
 #define RAVEN_COMM_MAX_PAYLOAD_LEN (RAVEN_COMM_MAX_MESSAGE_LEN - 3)
 
-
 /* ========================================================================== */
 /* ENUMERATIONS & STRUCTURES                                                  */
 /* ========================================================================== */
@@ -49,10 +48,34 @@ typedef struct {
     char payload[RAVEN_COMM_MAX_PAYLOAD_LEN];           /**< The null-terminated payload string. */
 } robot_command_t;
 
-
 /* ========================================================================== */
 /* PUBLIC API                                                                 */
 /* ========================================================================== */
+
+/**
+ * @brief Initializes the communication module.
+ * * Spawns the internal FreeRTOS task responsible for decoding incoming BLE messages.
+ */
 void raven_comm_init(void);
+
+/**
+ * @brief Formats and sends a message through the communication interface (BLE).
+ * * Uses standard `printf` style formatting. Automatically appends the module tag 
+ * and carriage returns.
+ * * @param tag A 3-character string identifying the source module.
+ * @param format Standard format string (e.g., "Value: %d").
+ * @param ... Variable arguments matching the format string.
+ */
 void raven_comm_send_message(const char *tag, const char *format, ...);
+
+/**
+ * @brief Checks if a new message is available for a specific command category.
+ * * Reads the internal mailbox associated with the provided command type.
+ * If a new message exists, it copies the payload to the output buffer and
+ * lowers the 'new message' flag. This read operation is protected by a spinlock.
+ *
+ * @param cmd_type    The target command category to check.
+ * @param out_payload Buffer where the payload will be copied if a message exists.
+ * @return true if a new message was retrieved, false otherwise.
+ */
 bool raven_comm_check_new_message(robot_cmd_type_t cmd_type, char *out_payload);

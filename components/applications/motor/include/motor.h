@@ -1,9 +1,11 @@
 /**
  * @file motor.h
  * @brief Application-level manager for the robot's locomotion and auxiliary motors.
- * * This module abstracts the hardware layer and provides a physics-based API
+ *
+ * This module abstracts the hardware layer and provides a physics-based API
  * (voltage control) to ensure consistent PID behavior regardless of battery drain.
  */
+
 #pragma once
 
 #include <stdint.h>
@@ -46,6 +48,5 @@ void motor_coast(motor_id_t id);
 
 /**
  * @brief Blocking diagnostic task to validate all configured motors.
- * Iterates through all motors applying basic movements.
  */
 void motor_peripheral_validation(void);

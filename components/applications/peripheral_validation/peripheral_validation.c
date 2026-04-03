@@ -12,12 +12,12 @@
 #include <stdbool.h>
 #include <string.h>
 
-// FreeRTOS includes for vTaskDelay
+// FreeRTOS
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
 // Project includes
-#include "raven_comm.h" // Required for RAVEN_COMM_MAX_PAYLOAD_LEN
+#include "raven_comm.h"
 #include "raven_log.h"
 #include "rgb_led.h"
 #include "buzzer.h"

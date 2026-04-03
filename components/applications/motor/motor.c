@@ -1,22 +1,34 @@
 /**
  * @file motor.c
  * @brief Application-level Motor Manager using DRV8874 HAL.
- * * This module abstracts the hardware layer and provides a physics-based API
+ *
+ * This module abstracts the hardware layer and provides a physics-based API
  * (voltage control) to ensure consistent PID behavior regardless of battery drain.
  */
 
 #include "motor.h"
-#include "DRV8874.h"
-#include "pinout.h"
-#include "raven_log.h"
-#include "raven_comm.h"
-#include "battery_sensor.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
+
+// Standard C Libraries
 #include <stdbool.h>
 #include <math.h> // Required for round()
 
+// FreeRTOS
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
+// Project Includes (All correctly mapped as PRIV_REQUIRES)
+#include "pinout.h"
+#include "raven_log.h"
+#include "raven_comm.h"
+#include "DRV8874.h"
+#include "battery_sensor.h"
+
 #define TAG "MOT"
+
+/* ========================================================================== */
+/* MACROS & CONFIGURATIONS                                                    */
+/* ========================================================================== */
+
 static bool initialized = false;
 
 /* * Optimal constants for Coreless DC Motors.
@@ -45,6 +57,10 @@ static motor_instance_t motors[MOTOR_MAX_COUNT] = {
     [MOTOR_LEFT]  = { .name = "LEFT",  .pin_in1 = LEFT_MOTOR_DIR_PIN,  .pin_in2 = LEFT_MOTOR_VEL_PIN,  .handle = NULL },
     [MOTOR_RIGHT] = { .name = "RIGHT", .pin_in1 = RIGHT_MOTOR_DIR_PIN, .pin_in2 = RIGHT_MOTOR_VEL_PIN, .handle = NULL }
 };
+
+/* ========================================================================== */
+/* PUBLIC API IMPLEMENTATIONS                                                 */
+/* ========================================================================== */
 
 /**
  * @brief Initializes all configured motors and their native MCPWM hardware.

@@ -8,6 +8,8 @@
  * tasks request state changes.
  */
 
+#include "state_machine.h"
+
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -17,7 +19,6 @@
 #include "freertos/task.h"
 
 // Project-specific includes
-#include "state_machine.h"
 #include "raven_log.h"
 #include "raven_comm.h"
 #include "ble_manager.h"
@@ -122,60 +123,33 @@ static TaskHandle_t state_machine_commands_task_handle = NULL;
 static TaskHandle_t state_machine_failsafe_task_handle = NULL;
 
 /* ========================================================================== */
-/* PUBLIC API                                                                 */
+/* PUBLIC API IMPLEMENTATIONS                                                 */
 /* ========================================================================== */
 
-/**
- * @brief Forces the state machine back to the initial waiting state.
- */
-void state_machine_reset(void) { 
-    REQUEST_STATE(state_wait_user_connection); 
+void state_machine_reset(void) {
+    REQUEST_STATE(state_wait_user_connection);
 }
 
-/**
- * @brief Executes one cycle of the state machine.
- * * Safely applies any pending state transitions requested by other tasks, 
- * then executes the active state's callback function.
- */
-void state_machine_step(void) { 
+void state_machine_step(void) {
     // 1. Check and apply any requested state changes safely
     apply_pending_state_transition();
-
+    
     // 2. Execute the current state
-    state_machine.cb(NULL); 
+    if (state_machine.cb != NULL) state_machine.cb(NULL); // Single-line if enforced
 }
 
-/**
- * @brief Retrieves the string name of the currently active state.
- * @return const uint8_t* Pointer to the state name string.
- */
-const uint8_t *state_get_name(void) { 
-    return state_machine.name; 
+const uint8_t *state_get_name(void) {
+    return state_machine.name;
 }
 
-/**
- * @brief Initializes and spawns all FreeRTOS tasks related to the state machine.
- * * Tasks are pinned to Core 1 (APP_CPU) to keep them isolated from 
- * Wi-Fi/Radio/BLE tasks running on Core 0.
- */
 void state_machine_init(void) {
-    // 1. Core State Machine Task
-    xTaskCreatePinnedToCore(
-        state_machine_task, "state_machine", 4096, NULL, 5, 
-        &state_machine_task_handle, 1
-    );  
+    // Initialize tasks for failsafe and background command listening
+    xTaskCreate(state_machine_task, "sma_task", 4096, NULL, 5, &state_machine_task_handle);
+    xTaskCreate(state_machine_commands_task, "sma_cmd_task", 2048, NULL, 4, &state_machine_commands_task_handle);
+    xTaskCreatePinnedToCore(state_machine_failsafe_task, "sma_failsafe", 2048, NULL, 6, &state_machine_failsafe_task_handle, 1);
 
-    // 2. Command Listener Task
-    xTaskCreatePinnedToCore(
-        state_machine_commands_task, "sma_commands", 4096, NULL, 5, 
-        &state_machine_commands_task_handle, 1
-    );  
-
-    // 3. Failsafe & Emergency Stop Task
-    xTaskCreatePinnedToCore(
-        state_machine_failsafe_task, "sma_failsafe", 4096, NULL, 5, 
-        &state_machine_failsafe_task_handle, 1
-    );
+    RAVEN_LOGI(TAG, "Initialized successfully.");
+    raven_comm_send_message(TAG, "State Machine Booted. Active State: %s", state_machine.name);
 }
 
 /* ========================================================================== */
@@ -276,23 +250,25 @@ static void *state_pid_tuning(void *args) {
 }
 
 /* ========================================================================== */
-/* PRIVATE HELPER FUNCTIONS                                                   */
+/* PRIVATE FUNCTION IMPLEMENTATIONS                                           */
 /* ========================================================================== */
 
-/**
- * @brief Safely applies a requested state transition using a critical section.
- */
 static void apply_pending_state_transition(void) {
-    // ENTER CRITICAL SECTION: Quickly check and clear the request flag
-    if (state_machine.has_pending_request) {
-        taskENTER_CRITICAL(&state_spinlock);
-        state_machine.cb = state_machine.pending_cb;
-        state_machine.name = state_machine.pending_name;
-        state_machine.has_pending_request = false;
-        taskEXIT_CRITICAL(&state_spinlock);
+    if (!state_machine.has_pending_request) return; // Single-line if enforced
 
-        raven_comm_send_message(TAG, "State transitioned to: %s", state_machine.name);
-    }
+    taskENTER_CRITICAL(&state_spinlock);
+    
+    // Log the transition for developer telemetry
+    RAVEN_LOGI(TAG, "Transition: [%s] -> [%s]", state_machine.name, state_machine.pending_name);
+    
+    state_machine.name = state_machine.pending_name;
+    state_machine.cb = state_machine.pending_cb;
+    
+    state_machine.pending_name = NULL;
+    state_machine.pending_cb = NULL;
+    state_machine.has_pending_request = false;
+    
+    taskEXIT_CRITICAL(&state_spinlock);
 }
 
 /**

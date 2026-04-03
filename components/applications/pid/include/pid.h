@@ -1,9 +1,9 @@
-#pragma once
-
 /**
  * @file pid.h
  * @brief Header file for the Proportional-Integral-Derivative (PID) controller.
  */
+
+#pragma once
 
 #include <stdint.h>
 

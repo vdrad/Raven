@@ -5,19 +5,26 @@
  * high-precision hardware timer-based tuning tool for system identification 
  * and telemetry data gathering.
  */
-
 #include "controller.h"
+
+// Standard Libraries
+#include <stdio.h>
+#include <stdlib.h>
+
+// FreeRTOS
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
+// Project Includes
 #include "pid.h"
 #include "odometry.h"
 #include "motor.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include "raven_log.h"
 #include "raven_comm.h" 
 #include "esp_timer.h"
 #include "battery_sensor.h"
-#include <stdio.h>
-#include <stdlib.h>
+
+#define TAG "CTR"
 
 /* --- GLOBAL PID INSTANCES --- */
 pid_context_t right_motor_pid = {
@@ -56,9 +63,15 @@ pid_context_t left_motor_pid = {
  * @brief Initializes the controller module and spawns the command listener task.
  */
 void controller_init(void) {
-    // Cria a Task no FreeRTOS. Ajuste a prioridade (5) e o Stack (4096) se necessário.
     xTaskCreate(controller_commands_task, "ctrl_cmd_task", 4096, NULL, 5, NULL);
-    RAVEN_LOGI("CTRL", "Controller Command Task initialized.");
+    
+    RAVEN_LOGI(TAG, "Initialized successfully.");
+    
+    // Broadcast initial PID states to the UI/App
+    raven_comm_send_message(TAG, "Active | R_PID: P=%.2f I=%.2f D=%.2f", 
+                            right_motor_pid.kP, right_motor_pid.kI, right_motor_pid.kD);
+    raven_comm_send_message(TAG, "Active | L_PID: P=%.2f I=%.2f D=%.2f", 
+                            left_motor_pid.kP, left_motor_pid.kI, left_motor_pid.kD);
 }
 
 void controller_motors_run(void) {

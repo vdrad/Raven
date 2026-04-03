@@ -1,24 +1,27 @@
 #include "controller.h"
-#include "pid.h"
-#include "raven_log.h"
-#include "motor.h"
-#include "odometry.h"
-#include "esp_timer.h"
-#include "freertos/FreeRTOS.h"
+
+// Standard Libraries
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-// TODO: clean raven_send_comm() and put relevant parameters instead of initialized successfully.
-// TODO: standardized code pattern, include, etc (ask for a fixed prompt)
+// FreeRTOS
+#include "freertos/FreeRTOS.h"
+
+// Project Includes
+#include "pid.h"
+#include "raven_log.h"
+#include "raven_comm.h"
+#include "motor.h"
+#include "odometry.h"
+#include "esp_timer.h"
+
+#define TAG "TUN"
 
 /* --- TUNER CONFIGURATIONS --- */
 #define ACCELERATION_RATE_M_S2  8.0f 
 #define SETPOINT_SPEED_M_S      1.5f 
 
-// t_accel(seconds) = (v_m_s / a_m_s2). 
-// t_total(seconds) = 4 * t_accel.
-// Multiply by 1000 to get milliseconds before casting to int!
 #define TUNER_DURATION_MS ((uint32_t)(4.0f * (SETPOINT_SPEED_M_S / ACCELERATION_RATE_M_S2) * 1000.0f)) 
 #define LOOP_PERIOD_US    1000
 #define TOTAL_SAMPLES     (uint32_t)(TUNER_DURATION_MS / (LOOP_PERIOD_US / 1000.0f))
@@ -48,6 +51,7 @@ static pid_context_t **tuner_active_pids = NULL;
 static uint8_t tuner_active_pids_count = 0;
 static void (*tuner_update_cb)(void) = NULL;
 static void (*tuner_stop_cb)(void) = NULL;
+
 /* --- 2. TIMER CALLBACK --- */
 /**
  * @brief Hardware timer callback that executes the high-frequency tuning loop.

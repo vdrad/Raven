@@ -15,10 +15,12 @@
 #include <stdarg.h>
 #include <string.h>
 
+// FreeRTOS Includes
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
 
+// Project Includes
 #include "raven_log.h"
 #include "ble_manager.h"
 #include "peripheral_validation.h"
@@ -136,7 +138,7 @@ static void raven_comm_decoder_task(void *pvParameters) {
 
 
 /* ========================================================================== */
-/* PUBLIC API                                                                 */
+/* PUBLIC API IMPLEMENTATIONS                                                 */
 /* ========================================================================== */
 
 /**
@@ -175,39 +177,26 @@ void raven_comm_init(void) {
     raven_comm_send_message(TAG, "Initialized successfully.");
 }
 
-/**
- * @brief Formats and sends a tagged telemetry message over BLE.
- *
- * This function behaves similarly to `printf`. It safely combines the provided 
- * TAG and formatted string, appends `\r\n`, and transmits it. Includes buffer 
- * overflow protection to prevent system crashes.
- *
- * @param tag    A short string identifying the source (e.g., "BATTERY", "PID").
- * @param format The C-style format string.
- * @param ...    Variable arguments matching the format specifiers.
- */
 void raven_comm_send_message(const char *tag, const char *format, ...) {
+    if (!initialized || tag == NULL || format == NULL) return;
+
     char buffer[RAVEN_COMM_MAX_MESSAGE_LEN];
-
-    // 1. Write the TAG
-    int prefix_len = snprintf(buffer, sizeof(buffer), "[%s] ", tag);
-    
-    if (prefix_len < 0 || prefix_len >= sizeof(buffer)) {
-        RAVEN_LOGE(TAG, "TAG is too big.");
-        return; 
-    }
- 
-    // 2. Format the main message payload
     va_list args;
+    
+    // Format the prefix: "[TAG] "
+    int prefix_len = snprintf(buffer, sizeof(buffer), "[%s] ", tag);
+    if (prefix_len < 0 || prefix_len >= sizeof(buffer)) return;
+    
+    // Format the actual message payload
     va_start(args, format);
-    int msg_len = vsnprintf(buffer + prefix_len, sizeof(buffer) - prefix_len, format, args);
+    int message_len = vsnprintf(buffer + prefix_len, sizeof(buffer) - prefix_len, format, args);
     va_end(args);
-
-    // 3. Append line endings and transmit
-    if (msg_len > 0) {
-        int total_len = prefix_len + msg_len;
+    
+    if (message_len > 0) {
+        int total_len = prefix_len + message_len;
         
-        if (total_len + 2 < sizeof(buffer)) {
+        // Ensure there is room for the CRLF terminator
+        if (total_len < sizeof(buffer) - 2) {
             buffer[total_len] = '\r';
             buffer[total_len + 1] = '\n';
             total_len += 2;
@@ -222,19 +211,9 @@ void raven_comm_send_message(const char *tag, const char *format, ...) {
     }
 }
 
-/**
- * @brief Checks if a new message is available for a specific command category.
- *
- * Reads the internal mailbox associated with the provided command type.
- * If a new message exists, it copies the payload to the output buffer and
- * lowers the 'new message' flag. This read operation is protected by a spinlock.
- *
- * @param cmd_type    The target command category to check (e.g., CMD_VALIDATION).
- * @param out_payload Buffer where the payload will be copied if a message exists.
- * @return true if a new message was retrieved, false otherwise.
- */
 bool raven_comm_check_new_message(robot_cmd_type_t cmd_type, char *out_payload) {
     if (cmd_type <= CMD_UNKNOWN || cmd_type >= CMD_MAX || out_payload == NULL) return false;
+    
     bool is_new = false;
 
     // ENTER CRITICAL SECTION: Read and clear the mailbox safely

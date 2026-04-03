@@ -1,10 +1,16 @@
+/**
+ * @file raven_log.h
+ * @brief Centralized logging macros and configuration for the Raven PRL-1 robot.
+ *
+ * Wraps the ESP-IDF logging system to provide a centralized toggle switch 
+ * (RAVEN_LOG_ENABLED) and standardized formatting across all project modules.
+ */
+
 #pragma once
 
-// INCLUDES
-#include "esp_log.h"
 #include <stdbool.h>
+#include "esp_log.h"
 
-// MACROS
 #define RAVEN_LOG_ENABLED 1 
 
 #if RAVEN_LOG_ENABLED
@@ -39,5 +45,8 @@
     #define RAVEN_LOGW(tag, format, ...) do {} while(0)
 #endif
 
-// FUNCTIONS
+/**
+ * @brief Initializes the custom logging system.
+ * * Applies the global log level configuration to the core log tag.
+ */
 void raven_log_init(void);
