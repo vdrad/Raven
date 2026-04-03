@@ -19,10 +19,10 @@
 #define TAG "TUN"
 
 /* --- TUNER CONFIGURATIONS --- */
-#define ACCELERATION_RATE_M_S2  8.0f 
-#define SETPOINT_SPEED_M_S      1.5f 
+#define ACCELERATION_RATE_MMPS2  8000.0f 
+#define SETPOINT_SPEED_MMPS      1500.0f 
 
-#define TUNER_DURATION_MS ((uint32_t)(4.0f * (SETPOINT_SPEED_M_S / ACCELERATION_RATE_M_S2) * 1000.0f)) 
+#define TUNER_DURATION_MS ((uint32_t)(4.0f * (SETPOINT_SPEED_MMPS / ACCELERATION_RATE_MMPS2) * 1000.0f)) 
 #define LOOP_PERIOD_US    1000
 #define TOTAL_SAMPLES     (uint32_t)(TUNER_DURATION_MS / (LOOP_PERIOD_US / 1000.0f))
 
@@ -65,17 +65,17 @@ static void pid_tuner_timer_callback(void* arg) {
 
     if (tuner_current_sample < phase_1_end) {
         // Phase 1: Acceleration (0 to Target)
-        current_setpoint = SETPOINT_SPEED_M_S * ((float)tuner_current_sample / phase_1_end);
+        current_setpoint = SETPOINT_SPEED_MMPS * ((float)tuner_current_sample / phase_1_end);
     } 
     else if (tuner_current_sample < phase_2_end) {
         // Phase 2: Steady State
-        current_setpoint = SETPOINT_SPEED_M_S;
+        current_setpoint = SETPOINT_SPEED_MMPS;
     } 
     else if (tuner_current_sample < TOTAL_SAMPLES) {
         // Phase 3: Deceleration (Target to 0)
         int decel_samples = TOTAL_SAMPLES - phase_2_end;
         int samples_into_decel = tuner_current_sample - phase_2_end;
-        current_setpoint = SETPOINT_SPEED_M_S * (1.0f - ((float)samples_into_decel / decel_samples));
+        current_setpoint = SETPOINT_SPEED_MMPS * (1.0f - ((float)samples_into_decel / decel_samples));
     }
 
     // Apply the dynamic setpoint to all tracked PIDs
@@ -94,7 +94,7 @@ static void pid_tuner_timer_callback(void* arg) {
         
         for (uint8_t i = 0; i < tuner_active_pids_count; i++) {
             tuner_log_buffer[tuner_current_sample].reading[i]      = tuner_active_pids[i]->current_reading;
-            tuner_log_buffer[tuner_current_sample].setpoint[i]     = tuner_active_pids[i]->setpoint; // Will log the trapezoid!
+            tuner_log_buffer[tuner_current_sample].setpoint[i]     = tuner_active_pids[i]->setpoint;
             tuner_log_buffer[tuner_current_sample].output[i]       = tuner_active_pids[i]->output;
             tuner_log_buffer[tuner_current_sample].integral_sum[i] = tuner_active_pids[i]->integral_sum;
         }

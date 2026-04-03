@@ -37,8 +37,8 @@
 #define PULSES_PER_WHEEL_REVOLUTION     (PULSES_PER_ENCODER_REVOLUTION * GEAR_RATIO)
 
 // Math constants pre-computed for maximum efficiency
-#define WHEEL_CIRCUMFERENCE_M           ((WHEEL_DIAMETER_MM * M_PI) / 1000.0f)
-#define METERS_PER_PULSE                (WHEEL_CIRCUMFERENCE_M / PULSES_PER_WHEEL_REVOLUTION)
+#define WHEEL_CIRCUMFERENCE_MM           (WHEEL_DIAMETER_MM * M_PI)
+#define MILIMETERS_PER_PULSE             (WHEEL_CIRCUMFERENCE_MM / PULSES_PER_WHEEL_REVOLUTION)
 
 /* ========================================================================== */
 /* GLOBAL VARIABLES                                                           */
@@ -93,32 +93,31 @@ void odometry_update(void) {
     if (dt_s <= 0.001f) return;
 
     // Calculate delta ticks
-    int delta_left = left_count - last_left_count;
-    int delta_right = right_count - last_right_count;
+    int delta_left_count = left_count - last_left_count;
+    int delta_right_count = right_count - last_right_count;
 
-    // Convert to meters
-    float left_dist_m = delta_left * METERS_PER_PULSE;
-    float right_dist_m = delta_right * METERS_PER_PULSE;
+    // Convert to milimeters
+    float left_dist_mm = delta_left_count * MILIMETERS_PER_PULSE;
+    float right_dist_mm = delta_right_count * MILIMETERS_PER_PULSE;
 
     // Calculate Instantaneous Speeds (m/s)
-    float inst_vel_left = left_dist_m / dt_s;
-    float inst_vel_right = right_dist_m / dt_s;
+    float inst_vel_left_mm = left_dist_mm / dt_s;
+    float inst_vel_right_mm = right_dist_mm / dt_s;
 
     // Apply EMA filter or raw passing
     #if USE_EMA_FILTER
-        current_odom_data.velocity_left_m_s = (ODOMETRY_EMA_ALPHA * inst_vel_left) + 
-                                              ((1.0f - ODOMETRY_EMA_ALPHA) * current_odom_data.velocity_left_m_s);
-        current_odom_data.velocity_right_m_s = (ODOMETRY_EMA_ALPHA * inst_vel_right) + 
-                                               ((1.0f - ODOMETRY_EMA_ALPHA) * current_odom_data.velocity_right_m_s);
+        current_odom_data.left_wheel_velocity_mmps = (ODOMETRY_EMA_ALPHA * inst_vel_left_mm) + 
+                                              ((1.0f - ODOMETRY_EMA_ALPHA) * current_odom_data.left_wheel_velocity_mmps);
+        current_odom_data.right_wheel_velocity_mmps = (ODOMETRY_EMA_ALPHA * inst_vel_right_mm) + 
+                                              ((1.0f - ODOMETRY_EMA_ALPHA) * current_odom_data.right_wheel_velocity_mmps);
     #else
-        current_odom_data.velocity_left_m_s = inst_vel_left;
-        current_odom_data.velocity_right_m_s = inst_vel_right;
+        current_odom_data.left_wheel_velocity_mmps  = inst_vel_left;
+        current_odom_data.right_wheel_velocity_mmps = inst_vel_right;
     #endif
 
     // Center Robot Kinematics
-    current_odom_data.velocity_robot_m_s = (current_odom_data.velocity_left_m_s + current_odom_data.velocity_right_m_s) / 2.0f;
-    float step_dist_m = (left_dist_m + right_dist_m) / 2.0f;
-    current_odom_data.distance_traveled_robot_m += step_dist_m;
+    current_odom_data.robot_velocity_mmps = (current_odom_data.left_wheel_velocity_mmps + current_odom_data.right_wheel_velocity_mmps) / 2.0f;
+    current_odom_data.robot_distance_traveled_mm = (left_dist_mm + right_dist_mm) / 2.0f;
 
     // Save state for the next cycle
     last_left_count = left_count;
@@ -138,6 +137,6 @@ void odometry_reset(void) {
     encoder_get_count(ENCODER_RIGHT, &last_right_count);
     
     // Clear integration
-    current_odom_data.distance_traveled_robot_m = 0.0f;
+    current_odom_data.robot_distance_traveled_mm = 0.0f;
     last_time_us = esp_timer_get_time();
 }
