@@ -33,7 +33,7 @@ pid_context_t right_motor_pid = {
     .kD     = 0.0f,               
     .bias   = 0.0f,             
 
-    .setpoint = 1500.0f,        
+    .setpoint = 1.500f,        
     .current_reading = 0.0f,  
 
     .integral_sum     = 0.0f,
@@ -49,7 +49,7 @@ pid_context_t left_motor_pid = {
     .kD     = 0.0f,               
     .bias   = 0.0f,             
 
-    .setpoint = 1500.0f,        
+    .setpoint = 1.500f,        
     .current_reading = 0.0f,  
 
     .integral_sum     = 0.0f,
@@ -80,18 +80,14 @@ void controller_motors_run(void) {
     odometry_data_t odom = odometry_get_data();
     
     // 2. Assign readings to the respective PIDs
-    left_motor_pid.current_reading = odom.left_wheel_velocity_mmps;
-    right_motor_pid.current_reading = odom.right_wheel_velocity_mmps;
+    left_motor_pid.current_reading = odom.velocity_left_m_s;
+    right_motor_pid.current_reading = odom.velocity_right_m_s;
     
     // 3. Compute both
     pid_compute(&left_motor_pid);
     pid_compute(&right_motor_pid);
     
-    // 4. Conditionate output
-    left_motor_pid.output  /= 1000.0f; // mV -> V
-    right_motor_pid.output /= 1000.0f; // mV -> V
-
-    // 5. Actuate
+    // 4. Actuate
     motor_set_voltage(MOTOR_LEFT, left_motor_pid.output);
     motor_set_voltage(MOTOR_RIGHT, right_motor_pid.output);
 }
