@@ -54,8 +54,8 @@ typedef struct {
  * Indices are explicitly mapped to the motor_id_t enum.
  */
 static motor_instance_t motors[MOTOR_MAX_COUNT] = {
-    [MOTOR_LEFT]  = { .name = "LEFT",  .pin_in1 = LEFT_MOTOR_DIR_PIN,  .pin_in2 = LEFT_MOTOR_VEL_PIN,  .handle = NULL },
-    [MOTOR_RIGHT] = { .name = "RIGHT", .pin_in1 = RIGHT_MOTOR_DIR_PIN, .pin_in2 = RIGHT_MOTOR_VEL_PIN, .handle = NULL }
+    [MOTOR_LEFT]  = { .name = "LEFT",  .pin_in1 = LEFT_MOTOR_IN2_PIN,  .pin_in2 = LEFT_MOTOR_IN1_PIN,  .handle = NULL },
+    [MOTOR_RIGHT] = { .name = "RIGHT", .pin_in1 = RIGHT_MOTOR_IN2_PIN, .pin_in2 = RIGHT_MOTOR_IN1_PIN, .handle = NULL }
 };
 
 /* ========================================================================== */

@@ -33,8 +33,8 @@
 #define BATTERY_MONITORING_USB_VOLTAGE  3.0f
 
 #define BATTERY_SENSOR_SAMPLES_PER_READING 2
-#define BATTERY_SENSOR_VOLTAGE_POINT       12.27f
-#define BATTERY_SENSOR_ADC_POINT           1769.0f
+#define BATTERY_SENSOR_VOLTAGE_POINT       12.36f
+#define BATTERY_SENSOR_ADC_POINT           1834.0f
 
 
 /* ========================================================================== */
