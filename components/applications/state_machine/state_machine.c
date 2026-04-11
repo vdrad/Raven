@@ -254,21 +254,22 @@ static void *state_pid_tuning(void *args) {
 /* ========================================================================== */
 
 static void apply_pending_state_transition(void) {
-    if (!state_machine.has_pending_request) return; // Single-line if enforced
+    if (!state_machine.has_pending_request) return;
+
+    const uint8_t *old_state = state_machine.name;
+    const uint8_t *new_state = state_machine.pending_name;
 
     taskENTER_CRITICAL(&state_spinlock);
-    
-    // Log the transition for developer telemetry
-    RAVEN_LOGI(TAG, "Transition: [%s] -> [%s]", state_machine.name, state_machine.pending_name);
-    
     state_machine.name = state_machine.pending_name;
     state_machine.cb = state_machine.pending_cb;
     
     state_machine.pending_name = NULL;
     state_machine.pending_cb = NULL;
     state_machine.has_pending_request = false;
-    
     taskEXIT_CRITICAL(&state_spinlock);
+
+    // 3. Imprime com segurança (com interrupções ativadas)
+    RAVEN_LOGI(TAG, "Transition: [%s] -> [%s]", old_state, new_state);
 }
 
 /**
