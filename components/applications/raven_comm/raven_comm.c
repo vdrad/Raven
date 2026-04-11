@@ -74,9 +74,10 @@ static void receive_message_cb(uint8_t *data, uint16_t len) {
     // 1. Extract the header to determine the command category
     char header = (char)data[0];
     switch (header) {
-        case 'V': new_command.type = CMD_VALIDATION;        break;
-        case 'S': new_command.type = CMD_STATE_MACHINE;     break;
-        case 'C': new_command.type = CMD_CONTROLLER_TUNING; break;
+        case 'V': new_command.type = CMD_VALIDATION;             break;
+        case 'S': new_command.type = CMD_STATE_MACHINE;          break;
+        case 'C': new_command.type = CMD_CONTROLLER_TUNING;      break;
+        case 'M': new_command.type = CMD_MOTOR_CHARACTERIZATION; break;
         default:  new_command.type = CMD_UNKNOWN; break;
     }
 

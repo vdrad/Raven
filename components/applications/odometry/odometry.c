@@ -137,7 +137,11 @@ void odometry_reset(void) {
     encoder_get_count(ENCODER_LEFT, &last_left_count);
     encoder_get_count(ENCODER_RIGHT, &last_right_count);
     
-    // Clear integration
+    // Clear data
     current_odom_data.distance_traveled_robot_m = 0.0f;
+    current_odom_data.velocity_left_m_s  = 0.0f;
+    current_odom_data.velocity_right_m_s = 0.0f;
+    current_odom_data.velocity_robot_m_s = 0.0f;
+
     last_time_us = esp_timer_get_time();
 }

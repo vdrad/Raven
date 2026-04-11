@@ -66,10 +66,11 @@ typedef void *(*state_callback)(void *);
  * @brief Internal commands recognized by the State Machine command decoder.
  */
 typedef enum {
-    SMA_CMD_UNKNOWN = 0,                    /**< Unrecognized command header. */
-    SMA_CMD_ENTER_TESTING_STATE,            /**< State Machine command (Header: 'S', Payload: 'TST'). */
-    SMA_CMD_ENTER_VALIDATION_STATE,         /**< Hardware validation command (Header: 'S', Payload: 'VLD'). */
-    SMA_CMD_ENTER_PID_TUNING_STATE,         /**< PID Tuning command (Header: 'S', Payload: 'PID'). */
+    SMA_CMD_UNKNOWN = 0,                        /**< Unrecognized command header. */
+    SMA_CMD_ENTER_TESTING_STATE,                /**< State Machine command (Header: 'S', Payload: 'TST'). */
+    SMA_CMD_ENTER_VALIDATION_STATE,             /**< Hardware validation command (Header: 'S', Payload: 'VLD'). */
+    SMA_CMD_ENTER_PID_TUNING_STATE,             /**< PID Tuning command (Header: 'S', Payload: 'PID'). */
+    SMA_CMD_ENTER_MOTOR_CHARACTERIZATION_STATE  /**< Motor Characterization command (Header: 'S', Payload: 'MCR'). */
 } state_machine_cmd_type_t;
 
 /* ========================================================================== */
@@ -83,6 +84,7 @@ ADD_STATE(configuration);
 ADD_STATE(test);
 ADD_STATE(validation);
 ADD_STATE(pid_tuning);
+ADD_STATE(motor_characterization);
 
 // --- Private Helpers ---
 static state_machine_cmd_type_t command_decoder(char *payload);
@@ -249,6 +251,17 @@ static void *state_pid_tuning(void *args) {
     return NULL;
 }
 
+/**
+ * @brief Perform Motor Characterization.
+ * @return NULL
+ */
+static void *state_motor_characterization(void *args) {
+    motor_characterization_run();
+    REQUEST_STATE(state_configuration);
+
+    return NULL;
+}
+
 /* ========================================================================== */
 /* PRIVATE FUNCTION IMPLEMENTATIONS                                           */
 /* ========================================================================== */
@@ -281,6 +294,7 @@ static state_machine_cmd_type_t command_decoder(char *payload) {
     if (strcmp(payload, "TST") == 0) return SMA_CMD_ENTER_TESTING_STATE;
     if (strcmp(payload, "VLD") == 0) return SMA_CMD_ENTER_VALIDATION_STATE;
     if (strcmp(payload, "PID") == 0) return SMA_CMD_ENTER_PID_TUNING_STATE;
+    if (strcmp(payload, "MCR") == 0) return SMA_CMD_ENTER_MOTOR_CHARACTERIZATION_STATE;
 
     raven_comm_send_message(TAG, "Invalid input '%s'. Expecting 'STST' or 'SVLD'.", payload);
     return SMA_CMD_UNKNOWN;
@@ -328,6 +342,10 @@ static void state_machine_commands_task(void *pvParameters) {
 
                 case SMA_CMD_ENTER_PID_TUNING_STATE:
                     REQUEST_STATE(state_pid_tuning);
+                    break;
+
+                case SMA_CMD_ENTER_MOTOR_CHARACTERIZATION_STATE:
+                    REQUEST_STATE(state_motor_characterization);
                     break;
 
                 default:

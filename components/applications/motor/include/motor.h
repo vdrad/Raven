@@ -50,3 +50,9 @@ void motor_coast(motor_id_t id);
  * @brief Blocking diagnostic task to validate all configured motors.
  */
 void motor_peripheral_validation(void);
+
+/**
+ * @brief Roda a sequência completa de caracterização travando a State Machine.
+ * Aguarda o comando MPASS via mailbox para avançar cada degrau de tensão.
+ */
+void motor_characterization_run(void);
