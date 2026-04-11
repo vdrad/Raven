@@ -39,8 +39,8 @@ pid_context_t right_motor_pid = {
     .integral_sum     = 0.0f,
     .max_integral_sum = 1000.0f,
 
-    .max_output =  BATTERY_MONITORING_HIGH_VOLTAGE,      
-    .min_output = -BATTERY_MONITORING_HIGH_VOLTAGE,           
+    .max_output =  3.0,      
+    .min_output = -3.0,           
 };
 
 pid_context_t left_motor_pid = {
@@ -55,8 +55,8 @@ pid_context_t left_motor_pid = {
     .integral_sum     = 0.0f,
     .max_integral_sum = 1000.0f,
 
-    .max_output =  BATTERY_MONITORING_HIGH_VOLTAGE,      
-    .min_output = -BATTERY_MONITORING_HIGH_VOLTAGE,           
+    .max_output =  3.0,      
+    .min_output = -3.0,           
 };
 
 /**

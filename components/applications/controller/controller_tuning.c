@@ -145,12 +145,16 @@ void controller_run_generic_tuner(pid_context_t **target_pids, uint8_t num_pids,
         return;
     }
 
-// 3. Reset states for all tracked PIDs
+    // 3. Reset states for all tracked PIDs
     tuner_current_sample = 0;
     for (uint8_t i = 0; i < tuner_active_pids_count; i++) {
-        tuner_active_pids[i]->integral_sum = 0.0f;
+        tuner_active_pids[i]->current_reading = 0.0f;
+        tuner_active_pids[i]->current_error = 0.0f;
         tuner_active_pids[i]->previous_error = 0.0f;
-        tuner_active_pids[i]->last_run_time_us = 0; 
+        tuner_active_pids[i]->delta_error = 0.0f;
+        tuner_active_pids[i]->integral_sum = 0.0f;
+        tuner_active_pids[i]->last_run_time_us = esp_timer_get_time(); 
+        tuner_active_pids[i]->output = 0.0f;
     }
     odometry_reset();
 
@@ -213,7 +217,7 @@ void controller_run_generic_tuner(pid_context_t **target_pids, uint8_t num_pids,
             strlcat(row_buf, val_buf, sizeof(row_buf));
         }
         RAVEN_LOGI("TUNER", "%s", row_buf);
-        vTaskDelay(pdMS_TO_TICKS(1));
+        vTaskDelay(pdMS_TO_TICKS(2));
     }
     RAVEN_LOGI("TUNER", "--- CSV END ---");
 
