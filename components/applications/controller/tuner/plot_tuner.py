@@ -245,6 +245,7 @@ class TelemetryPlotter:
         self.on_xlims_change(self.ax1)
         self.canvas.draw()
 
+
 class PIDTunerDashboard(ctk.CTk):
     def __init__(self):
         super().__init__()
@@ -254,6 +255,7 @@ class PIDTunerDashboard(ctk.CTk):
         
         self.processor = DataProcessor()
         self.current_df = None
+        self.last_filepath = None  # TRACK THE LAST IMPORTED FILE
         self.build_ui()
 
     def build_ui(self):
@@ -265,8 +267,14 @@ class PIDTunerDashboard(ctk.CTk):
         self.gain_info = ctk.StringVar(value="Gains: Awaiting Telemetry")
         ctk.CTkLabel(header, textvariable=self.gain_info, font=("Consolas", 12), text_color="#AAAAAA").pack(side=ctk.LEFT, padx=40)
         
+        # IMPORT LOG BUTTON
         ctk.CTkButton(header, text="IMPORT LOG", font=SUBTITLE_FONT, fg_color=ACCENT_COLOR, 
-                      hover_color="#6B1EAD", command=self.handle_import).pack(side=ctk.RIGHT, padx=25)
+                      hover_color="#6B1EAD", command=self.handle_import).pack(side=ctk.RIGHT, padx=(10, 25))
+
+        # REFRESH BUTTON (Initially Disabled)
+        self.refresh_btn = ctk.CTkButton(header, text="REFRESH", font=SUBTITLE_FONT, fg_color="#4A4A55", 
+                                         hover_color="#5D5D6A", width=90, state="disabled", command=self.handle_refresh)
+        self.refresh_btn.pack(side=ctk.RIGHT, padx=10)
 
         container = ctk.CTkFrame(self, fg_color=BG_COLOR)
         container.pack(fill=ctk.BOTH, expand=True, padx=20, pady=20)
@@ -308,32 +316,45 @@ class PIDTunerDashboard(ctk.CTk):
         if self.current_df is not None:
             self.plotter.update_plots(self.current_df, show_0=self.show_left_var.get(), show_1=self.show_right_var.get())
 
+    # SHARED LOAD LOGIC
+    def load_file(self, path):
+        try:
+            self.current_df = self.processor.parse_log_file(path)
+            self.last_filepath = path
+            
+            # Enable refresh button if disabled
+            self.refresh_btn.configure(state="normal")
+            
+            # Metrics for Motor 0 (Left)
+            max_err0, rmse0, cruise0, dt, freq, kp0, ki0, kd0 = self.processor.calculate_metrics(self.current_df, "0")
+            # Metrics for Motor 1 (Right)
+            max_err1, rmse1, cruise1, _, _, kp1, ki1, kd1 = self.processor.calculate_metrics(self.current_df, "1")
+            
+            # Update KPI texts side-by-side (Left | Right)
+            self.vars["max_err"].set(f"{max_err0:.1f} | {max_err1:.1f}")
+            self.vars["rmse"].set(f"{rmse0:.1f} | {rmse1:.1f}")
+            self.vars["cruise"].set(f"{cruise0:.1f} | {cruise1:.1f}")
+            self.vars["dt"].set(f"{dt:.1f}")
+            self.vars["freq"].set(f"{int(freq)}")
+            
+            # Update Gains (Left | Right)
+            gains_txt = (f"L0: P={kp0:.5f} I={ki0:.5f} D={kd0:.5f}  ||  "
+                         f"R1: P={kp1:.5f} I={ki1:.5f} D={kd1:.5f}")
+            self.gain_info.set(gains_txt)
+            
+            self.refresh_plots()
+        except Exception as e:
+            print(f"Loading Error: {e}")
+
     def handle_import(self):
         path = filedialog.askopenfilename(filetypes=[("Logs", "*.txt")])
         if path:
-            try:
-                self.current_df = self.processor.parse_log_file(path)
-                
-                # Metrics for Motor 0 (Left)
-                max_err0, rmse0, cruise0, dt, freq, kp0, ki0, kd0 = self.processor.calculate_metrics(self.current_df, "0")
-                # Metrics for Motor 1 (Right)
-                max_err1, rmse1, cruise1, _, _, kp1, ki1, kd1 = self.processor.calculate_metrics(self.current_df, "1")
-                
-                # Update KPI texts side-by-side (Left | Right)
-                self.vars["max_err"].set(f"{max_err0:.1f} | {max_err1:.1f}")
-                self.vars["rmse"].set(f"{rmse0:.1f} | {rmse1:.1f}")
-                self.vars["cruise"].set(f"{cruise0:.1f} | {cruise1:.1f}")
-                self.vars["dt"].set(f"{dt:.1f}")
-                self.vars["freq"].set(f"{int(freq)}")
-                
-                # Update Gains (Left | Right)
-                gains_txt = (f"L0: P={kp0:.5f} I={ki0:.5f} D={kd0:.5f}  ||  "
-                             f"R1: P={kp1:.5f} I={ki1:.5f} D={kd1:.5f}")
-                self.gain_info.set(gains_txt)
-                
-                self.refresh_plots()
-            except Exception as e:
-                print(f"Import Error: {e}")
+            self.load_file(path)
+
+    def handle_refresh(self):
+        if self.last_filepath:
+            self.load_file(self.last_filepath)
+
 
 if __name__ == "__main__":
     app = PIDTunerDashboard()
