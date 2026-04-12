@@ -51,7 +51,7 @@ static bool initialized = false;
 static void encoder_init_instance(encoder_t *enc) {
     pcnt_unit_config_t unit_config = {
         .high_limit = 32767,
-        .low_limit = -32767,
+        .low_limit = -32768,
         .flags.accum_count = 1, 
     };
 
@@ -64,7 +64,7 @@ static void encoder_init_instance(encoder_t *enc) {
     ESP_ERROR_CHECK(pcnt_new_unit(&unit_config, &enc->unit_handle));
 
     ESP_ERROR_CHECK(pcnt_unit_add_watch_point(enc->unit_handle, 32767));
-    ESP_ERROR_CHECK(pcnt_unit_add_watch_point(enc->unit_handle, -32767));
+    ESP_ERROR_CHECK(pcnt_unit_add_watch_point(enc->unit_handle, -32768));
 
     /* Apply the noise filter */
     ESP_ERROR_CHECK(pcnt_unit_set_glitch_filter(enc->unit_handle, &filter_config));
