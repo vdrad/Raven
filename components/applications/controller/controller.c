@@ -33,8 +33,10 @@ pid_context_t right_motor_pid = {
     .kD     = 0.0f,               
     .bias   = 0.0f,             
 
-    .ff_coef = 0.914f,
-    .ff_bias = 0.114f,
+    .ff_coef = 0.91418f,
+    .ff_bias = 0.11392f,
+
+    .tm = 0.22243f,
 
     .setpoint = 1.5f,        
     .current_reading = 0.0f,  
@@ -52,8 +54,10 @@ pid_context_t left_motor_pid = {
     .kD     = 0.0f,               
     .bias   = 0.0f,             
 
-    .ff_coef = 0.908f,
-    .ff_bias = 0.139f,
+    .ff_coef = 0.90832f,
+    .ff_bias = 0.13873f,
+
+    .tm = 0.22744f,
 
     .setpoint = 1.5f,        
     .current_reading = 0.0f,  

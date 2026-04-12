@@ -300,7 +300,7 @@ class CharacterizationDashboard(ctk.CTk):
         
         ctk.CTkLabel(self.box_export, text="TELEMETRY EXPORT", font=SUBTITLE_FONT, text_color="#777777").pack(anchor="w", padx=15, pady=(10, 5))
         
-        self.eq_display = ctk.CTkTextbox(self.box_export, font=MONO_FONT, text_color="#00FF00", fg_color="#0A0A0A", border_width=1, border_color="#333", height=70)
+        self.eq_display = ctk.CTkTextbox(self.box_export, font=MONO_FONT, text_color="#00FF00", fg_color="#0A0A0A", border_width=1, border_color="#333", height=85)
         self.eq_display.pack(fill="both", expand=True, padx=15, pady=(0, 15))
         self.eq_display.insert("1.0", "// Waiting for data...")
         self.eq_display.configure(state="disabled")
@@ -437,6 +437,7 @@ class CharacterizationDashboard(ctk.CTk):
         motor_prefix = "LEFT" if motor_choice == "left" else "RIGHT"
         code_str = (f"// --- {motor_prefix} MOTOR PROFILE ---\n"
                     f"#define ACCEL_RATE_{motor_prefix}_M_S2 {recommended_accel:.2f}f\n"
+                    f"#define TIME_CONSTANT_{motor_prefix}_S {avg_tm:.5f}f\n"
                     f"float {motor_choice}_ff = ({Kv:.5f}f * target_vel) + {Ks:.5f}f;")
                     
         self.eq_display.insert("1.0", code_str)

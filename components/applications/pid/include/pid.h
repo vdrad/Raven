@@ -24,6 +24,9 @@ typedef struct {
     float ff_coef;
     float ff_bias;
 
+    /* --- System Data--- */
+    float tm;
+
     /* --- Inputs --- */
     float setpoint;         /**< Target value the controller aims to reach */
     float current_reading;  /**< Current measured value from the system */
