@@ -25,10 +25,11 @@ OUTPUT_1_COLOR = "#71F160"  # Neon Green
 ERROR_1_COLOR = "#FF4D4D"   # Red
 
 SETPOINT_COLOR = "#FDF5FF" 
+DIST_COLOR = OUTPUT_0_COLOR      # Light Blue for Distance
 
 TITLE_FONT = ("SAKURATA", 24) 
 SUBTITLE_FONT = ("Segoe UI", 14, "bold")
-MONO_FONT = ("Segoe UI", 16, "bold") 
+MONO_FONT = ("Segoe UI", 14, "bold") # Reduced slightly to fit detailed distance text
 
 class DataProcessor:
     """Processes 10-column dual motor logs with Metadata Header for Trapezoidal Profiles."""
@@ -87,7 +88,7 @@ class DataProcessor:
     @staticmethod
     def calculate_metrics(df, suffix="0"):
         if df.empty or f'Setpoint_{suffix}' not in df.columns: 
-            return 0, 0, 0, 0, 0, 0, 0, 0
+            return 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
             
         # 1. Max Tracking Error (Worst case deviation)
         max_track_err = df[f'Error_{suffix}'].abs().max()
@@ -110,8 +111,14 @@ class DataProcessor:
         # Retrieve gains parsed from metadata
         gains = df.attrs.get('gains', {}).get(suffix, {"p": 0.0, "i": 0.0, "d": 0.0})
         kp, ki, kd = gains["p"], gains["i"], gains["d"]
+
+        # 4. Distance Integration using Trapezoidal Rule (Velocity * Time)
+        # Time in seconds for standard unit integration (mm/s * s = mm)
+        time_s = df['Time_ms'] / 1000.0 
+        dist_setpoint = np.trapz(df[f'Setpoint_{suffix}'], time_s) if f'Setpoint_{suffix}' in df.columns else 0.0
+        dist_reading = np.trapz(df[f'Reading_{suffix}'], time_s) if f'Reading_{suffix}' in df.columns else 0.0
         
-        return max_track_err, rmse, cruise_rmse, avg_dt, freq, kp, ki, kd
+        return max_track_err, rmse, cruise_rmse, avg_dt, freq, kp, ki, kd, dist_setpoint, dist_reading
 
 class DarkToolbar(NavigationToolbar2Tk):
     def __init__(self, canvas, window):
@@ -250,7 +257,7 @@ class PIDTunerDashboard(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title("RAVEN PID TUNER | DUAL MOTOR ANALYSIS")
-        self.geometry("1400x900")
+        self.geometry("1400x940") # Slightly taller to accommodate new KPIs
         self.configure(fg_color=BG_COLOR)
         
         self.processor = DataProcessor()
@@ -279,7 +286,7 @@ class PIDTunerDashboard(ctk.CTk):
         container = ctk.CTkFrame(self, fg_color=BG_COLOR)
         container.pack(fill=ctk.BOTH, expand=True, padx=20, pady=20)
 
-        self.side_panel = ctk.CTkFrame(container, fg_color=BG_COLOR, width=320)
+        self.side_panel = ctk.CTkFrame(container, fg_color=BG_COLOR, width=330)
         self.side_panel.pack(side=ctk.LEFT, fill=ctk.Y, padx=(0, 20))
         
         toggle_frame = ctk.CTkFrame(self.side_panel, fg_color=PANEL_COLOR, corner_radius=8)
@@ -293,12 +300,17 @@ class PIDTunerDashboard(ctk.CTk):
         ctk.CTkCheckBox(toggle_frame, text="Right (1)", variable=self.show_right_var, 
                         command=self.refresh_plots, fg_color=READING_1_COLOR, text_color=READING_1_COLOR).pack(side=ctk.RIGHT, padx=15, pady=10)
         
-        # New KPIs for Trapezoidal Profiles
-        self.vars = {k: ctk.StringVar(value="--") for k in ["max_err", "rmse", "cruise", "dt", "freq"]}
+        # Track all KPI strings
+        self.vars = {k: ctk.StringVar(value="--") for k in ["max_err", "rmse", "cruise", "exp_dist", "act_dist", "dt", "freq"]}
         
-        self.add_kpi("MAX TRACK ERR [L | R]", self.vars["max_err"], "white")
-        self.add_kpi("OVERALL RMSE [L | R]", self.vars["rmse"], "white")
-        self.add_kpi("CRUISE RMSE [L | R]", self.vars["cruise"], "white")
+        self.add_kpi("MAX TRACK ERR [L | R]", self.vars["max_err"], READING_0_COLOR)
+        self.add_kpi("OVERALL RMSE [L | R]", self.vars["rmse"], READING_0_COLOR)
+        self.add_kpi("CRUISE RMSE [L | R]", self.vars["cruise"], READING_0_COLOR)
+        
+        # New Odometry Distances
+        self.add_kpi("EXPECTED DIST [ROBOT m]", self.vars["exp_dist"], DIST_COLOR)
+        self.add_kpi("ACTUAL DIST [ROBOT m]", self.vars["act_dist"], DIST_COLOR)
+
         self.add_kpi("AVG SAMPLE TIME [μs]", self.vars["dt"], "#AAAAAA")
         self.add_kpi("LOOP FREQUENCY [Hz]", self.vars["freq"], ACCENT_COLOR)
 
@@ -308,7 +320,7 @@ class PIDTunerDashboard(ctk.CTk):
 
     def add_kpi(self, title, var, color):
         card = ctk.CTkFrame(self.side_panel, fg_color=PANEL_COLOR, corner_radius=8)
-        card.pack(fill=ctk.X, pady=(0, 15), ipady=8)
+        card.pack(fill=ctk.X, pady=(0, 10), ipady=6)
         ctk.CTkLabel(card, text=title, font=("Segoe UI", 10, "bold"), text_color="#777777").pack()
         ctk.CTkLabel(card, textvariable=var, font=MONO_FONT, text_color=color).pack()
 
@@ -326,9 +338,9 @@ class PIDTunerDashboard(ctk.CTk):
             self.refresh_btn.configure(state="normal")
             
             # Metrics for Motor 0 (Left)
-            max_err0, rmse0, cruise0, dt, freq, kp0, ki0, kd0 = self.processor.calculate_metrics(self.current_df, "0")
+            max_err0, rmse0, cruise0, dt, freq, kp0, ki0, kd0, exp_d0, act_d0 = self.processor.calculate_metrics(self.current_df, "0")
             # Metrics for Motor 1 (Right)
-            max_err1, rmse1, cruise1, _, _, kp1, ki1, kd1 = self.processor.calculate_metrics(self.current_df, "1")
+            max_err1, rmse1, cruise1, _, _, kp1, ki1, kd1, exp_d1, act_d1 = self.processor.calculate_metrics(self.current_df, "1")
             
             # Update KPI texts side-by-side (Left | Right)
             self.vars["max_err"].set(f"{max_err0:.1f} | {max_err1:.1f}")
@@ -337,6 +349,14 @@ class PIDTunerDashboard(ctk.CTk):
             self.vars["dt"].set(f"{dt:.1f}")
             self.vars["freq"].set(f"{int(freq)}")
             
+            # Differential Drive Kinematics (Center point distance is the average of both wheels)
+            exp_dist_robot = (exp_d0 + exp_d1) / (2.0 * 1000)
+            act_dist_robot = (act_d0 + act_d1) / (2.0 * 1000)
+
+            # Format explicitly combining Robot Average with individual wheel breakdowns
+            self.vars["exp_dist"].set(f"{exp_dist_robot:.3f}  (L:{exp_d0/1000:.3f}|R:{exp_d1/1000:.3f})")
+            self.vars["act_dist"].set(f"{act_dist_robot:.3f}  (L:{act_d0/1000:.3f}|R:{act_d1/1000:.3f})")
+
             # Update Gains (Left | Right)
             gains_txt = (f"L0: P={kp0:.5f} I={ki0:.5f} D={kd0:.5f}  ||  "
                          f"R1: P={kp1:.5f} I={ki1:.5f} D={kd1:.5f}")
