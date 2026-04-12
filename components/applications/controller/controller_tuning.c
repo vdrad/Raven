@@ -217,7 +217,7 @@ void controller_run_generic_tuner(pid_context_t **target_pids, uint8_t num_pids,
             strlcat(row_buf, val_buf, sizeof(row_buf));
         }
         raven_comm_send_message("TUNER", "%s", row_buf);
-        vTaskDelay(pdMS_TO_TICKS(10));
+        vTaskDelay(pdMS_TO_TICKS(20));
     }
     raven_comm_send_message("TUNER", "--- CSV END ---");
 
