@@ -55,7 +55,8 @@ typedef struct {
  */
 static motor_instance_t motors[MOTOR_MAX_COUNT] = {
     [MOTOR_LEFT]  = { .name = "LEFT",  .pin_in1 = LEFT_MOTOR_IN2_PIN,  .pin_in2 = LEFT_MOTOR_IN1_PIN,  .handle = NULL },
-    [MOTOR_RIGHT] = { .name = "RIGHT", .pin_in1 = RIGHT_MOTOR_IN2_PIN, .pin_in2 = RIGHT_MOTOR_IN1_PIN, .handle = NULL }
+    [MOTOR_RIGHT] = { .name = "RIGHT", .pin_in1 = RIGHT_MOTOR_IN2_PIN, .pin_in2 = RIGHT_MOTOR_IN1_PIN, .handle = NULL },
+    [MOTOR_FAN]   = { .name = "FAN",   .pin_in1 = FAN_MOTOR_IN2_PIN,   .pin_in2 = FAN_MOTOR_IN1_PIN,   .handle = NULL },
 };
 
 /* ========================================================================== */
@@ -146,7 +147,7 @@ void motor_peripheral_validation(void) {
     float test_voltage = 1.0f; // Use a safe target voltage for testing
 
     // Sweep all motors without needing to temporarily map/unmap hardware
-    for (int i = 0; i < MOTOR_MAX_COUNT; i++) {
+    for (int i = 0; i < MOTOR_MAX_COUNT - 1; i++) {
         raven_comm_send_message(TAG, "--- Testing %s Motor ---", motors[i].name);
 
         raven_comm_send_message(TAG, "Forward %.1f Volts...", test_voltage);
@@ -165,6 +166,33 @@ void motor_peripheral_validation(void) {
         motor_brake((motor_id_t)i);
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
+
+    raven_comm_send_message(TAG, "Validation Complete.");
+}
+
+/**
+ * @brief Blocking diagnostic task to validate fan motor.
+ */
+void fan_peripheral_validation(void) {
+    if (!initialized) {
+        raven_comm_send_message(TAG, "Not initialized!");
+        return;
+    }
+
+    float test_voltage = 5.0f; // Use a safe target voltage for testing
+
+    raven_comm_send_message(TAG, "--- Testing %s Motor ---", motors[MOTOR_FAN].name);
+
+    raven_comm_send_message(TAG, "Clockwise %.1f Volts...", test_voltage);
+    for (uint16_t i = 0; i < (uint16_t)(test_voltage*10.0f); i++) {
+        motor_set_voltage(MOTOR_FAN, i/10.0f);
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+    vTaskDelay(pdMS_TO_TICKS(2000));
+
+    raven_comm_send_message(TAG, "Coasting...");
+    motor_coast(MOTOR_FAN);
+    vTaskDelay(pdMS_TO_TICKS(1000));
 
     raven_comm_send_message(TAG, "Validation Complete.");
 }

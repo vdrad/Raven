@@ -17,6 +17,7 @@
 typedef enum {
     MOTOR_LEFT = 0,
     MOTOR_RIGHT,
+    MOTOR_FAN,
     MOTOR_MAX_COUNT /**< Always keep at the end to determine array size */
 } motor_id_t;
 
@@ -52,7 +53,11 @@ void motor_coast(motor_id_t id);
 void motor_peripheral_validation(void);
 
 /**
- * @brief Roda a sequência completa de caracterização travando a State Machine.
- * Aguarda o comando MPASS via mailbox para avançar cada degrau de tensão.
+ * @brief Blocking diagnostic task to validate fan motor.
+ */
+void fan_peripheral_validation(void);
+
+/**
+ * @brief Performs motor speed profile characterization.
  */
 void motor_characterization_run(void);

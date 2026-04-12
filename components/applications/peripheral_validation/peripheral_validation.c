@@ -123,7 +123,8 @@ static peripheral_validation_cmd_type_t command_decoder(char *payload) {
 static void validate_all_peripherals(void) {
     // 1. Define the Test Suite using an array of structs
     peripheral_test_t test_suite[] = {
-        {"MOTOR",     motor_peripheral_validation,         false},
+        {"FAN",       fan_peripheral_validation,             false},
+        {"MOTOR",     motor_peripheral_validation,           false},
         {"RGB LED",   rgb_led_peripheral_validation,         false},
         {"BUZZER",    buzzer_peripheral_validation,          false},
         {"BATTERY",   battery_sensor_peripheral_validation,  false},
