@@ -177,7 +177,7 @@ void controller_run_generic_tuner(pid_context_t **target_pids, uint8_t num_pids,
     }
 
 // 6. Print the generated CSV dynamically based on the number of PIDs
-    RAVEN_LOGI("TUNER", "--- CSV START ---");
+    raven_comm_send_message("TUNER", "--- CSV START ---");
     
     // --- 6a. Print Metadata Header (PID Constants) ---
     char meta_buf[256];
@@ -188,7 +188,7 @@ void controller_run_generic_tuner(pid_context_t **target_pids, uint8_t num_pids,
                  i, tuner_active_pids[i]->kP, tuner_active_pids[i]->kI, tuner_active_pids[i]->kD);
         strlcat(meta_buf, pid_buf, sizeof(meta_buf));
     }
-    RAVEN_LOGI("TUNER", "%s", meta_buf);
+    raven_comm_send_message("TUNER", "%s", meta_buf);
 
     // --- 6b. Build and print standard CSV Column Header ---
     char header_buf[256];
@@ -198,7 +198,7 @@ void controller_run_generic_tuner(pid_context_t **target_pids, uint8_t num_pids,
         snprintf(col_buf, sizeof(col_buf), ",Reading_%u,Setpoint_%u,Output_%u,int_%u", i, i, i, i);
         strlcat(header_buf, col_buf, sizeof(header_buf)); 
     }
-    RAVEN_LOGI("TUNER", "%s", header_buf);
+    raven_comm_send_message("TUNER", "%s", header_buf);
 
     // --- 6c. Build and print CSV Rows ---
     for (int i = 0; i < TOTAL_SAMPLES; i++) {
@@ -216,10 +216,10 @@ void controller_run_generic_tuner(pid_context_t **target_pids, uint8_t num_pids,
                      tuner_log_buffer[i].integral_sum[j]);
             strlcat(row_buf, val_buf, sizeof(row_buf));
         }
-        RAVEN_LOGI("TUNER", "%s", row_buf);
+        raven_comm_send_message("TUNER", "%s", row_buf);
         vTaskDelay(pdMS_TO_TICKS(10));
     }
-    RAVEN_LOGI("TUNER", "--- CSV END ---");
+    raven_comm_send_message("TUNER", "--- CSV END ---");
 
     // 7. Cleanup
     free(tuner_log_buffer);

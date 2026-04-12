@@ -47,13 +47,16 @@ class DataProcessor:
                     continue
                 if "--- CSV END ---" in line:
                     break
-                if is_capturing and "TUNER:" in line:
-                    clean_line = line.split("TUNER:")[1].strip()
-                    # Capture the new Metadata row for PID Gains
-                    if clean_line.startswith("Metadata"):
-                        metadata_line = clean_line
-                    else:
-                        csv_data.append(clean_line)
+                if is_capturing:
+                    # Automatically recognize both "TUNER:" and "[TUNER]" log formats
+                    match = re.search(r'(TUNER:\s*|\[TUNER\]\s*)', line)
+                    if match:
+                        clean_line = line[match.end():].strip()
+                        # Capture the new Metadata row for PID Gains
+                        if clean_line.startswith("Metadata"):
+                            metadata_line = clean_line
+                        else:
+                            csv_data.append(clean_line)
         
         if not csv_data:
             raise ValueError("No CSV data found.")
@@ -115,8 +118,8 @@ class DataProcessor:
         # 4. Distance Integration using Trapezoidal Rule (Velocity * Time)
         # Time in seconds for standard unit integration (mm/s * s = mm)
         time_s = df['Time_ms'] / 1000.0 
-        dist_setpoint = np.trapz(df[f'Setpoint_{suffix}'], time_s) if f'Setpoint_{suffix}' in df.columns else 0.0
-        dist_reading = np.trapz(df[f'Reading_{suffix}'], time_s) if f'Reading_{suffix}' in df.columns else 0.0
+        dist_setpoint = np.trapezoid(df[f'Setpoint_{suffix}'], time_s) if f'Setpoint_{suffix}' in df.columns else 0.0
+        dist_reading = np.trapezoid(df[f'Reading_{suffix}'], time_s) if f'Reading_{suffix}' in df.columns else 0.0
         
         return max_track_err, rmse, cruise_rmse, avg_dt, freq, kp, ki, kd, dist_setpoint, dist_reading
 
