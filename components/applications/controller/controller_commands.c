@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 #include "freertos/FreeRTOS.h"
 /* =========================================================================
  * COMMAND PARSER & TUNING TASK
@@ -19,6 +20,7 @@ typedef enum {
     CON_CMD_SET_KI,
     CON_CMD_SET_KD,
     CON_CMD_SET_SETPOINT,
+    CON_CMD_SET_TD,
     CON_CMD_GET_PARAMS
 } controller_cmd_type_t;
 
@@ -52,6 +54,7 @@ static parsed_cmd_t command_decoder(const char *payload) {
             case 'I': result.type = CON_CMD_SET_KI;       break;
             case 'D': result.type = CON_CMD_SET_KD;       break;
             case 'S': result.type = CON_CMD_SET_SETPOINT; break;
+            case 'T': result.type = CON_CMD_SET_TD;       break;
             case 'C': result.type = CON_CMD_GET_PARAMS;   break;
             default:  result.type = CON_CMD_UNKNOWN;      break;
         }
@@ -78,7 +81,25 @@ static pid_context_t* get_target_pid(char target) {
 static void reset_pid_residuals(pid_context_t *pid) {
     pid->integral_sum = 0.0f;
     pid->previous_error = 0.0f;
-    // pid->last_run_time_us não precisa ser zerado aqui se o controle estiver rodando
+}
+
+/**
+ * @brief Updates Kp and Kd based on the desired response time Td
+ * * @param target_pid Pointer to PID struct
+ * @param td Desired response time in seconds
+ */
+static inline void controller_update_gains_from_td(pid_context_t *target_pid, float td) {
+    if (td < 0.001f) {
+        raven_comm_send_message(TAG, "ERROR: Td is too low!");
+        return; 
+    }
+
+    float tm = target_pid->tm;
+    float ff = target_pid->ff_coef;
+    float td_squared = td * td;
+
+    target_pid->kP = (ff * ((8.0f * tm) - td)) / td;
+    target_pid->kI = (32.01f * tm * ff) / td_squared;
 }
 
 void controller_commands_task(void *pvParameters) {
@@ -90,16 +111,16 @@ void controller_commands_task(void *pvParameters) {
             parsed_cmd_t cmd = command_decoder(received_cmd);
             bool updated = false;
 
-            // 1. Descobre qual PID vamos alterar
+            // 1. Finds which PID will be altered
             pid_context_t *target_pid = get_target_pid(cmd.target);
 
-            // Se o usuário mandou um alvo inválido (ex: "X,P,1.0")
+            // If user sent a valid controller
             if (target_pid == NULL) {
                 raven_comm_send_message("CTRL", "Invalid Target. Use R, L, Y, or N.");
-                continue; // Pula para a próxima iteração do loop
+                continue; // Continues for next iteration
             }
 
-            // 2. Aplica o comando no PID selecionado
+            // 2. Applies the given command
             switch (cmd.type) {
                 case CON_CMD_SET_KP:
                     target_pid->kP = cmd.value;
@@ -115,6 +136,10 @@ void controller_commands_task(void *pvParameters) {
                     break;
                 case CON_CMD_SET_SETPOINT:
                     target_pid->setpoint = cmd.value;
+                    updated = true;
+                    break;
+                case CON_CMD_SET_TD:
+                    controller_update_gains_from_td(target_pid, cmd.value);
                     updated = true;
                     break;
                 case CON_CMD_GET_PARAMS:
