@@ -20,7 +20,7 @@
 
 /* --- TUNER CONFIGURATIONS --- */
 #define ACCELERATION_RATE_M_S2  8.0f 
-#define SETPOINT_SPEED_M_S      1.5f 
+#define SETPOINT_SPEED_M_S      3.0f 
 
 #define TUNER_DURATION_MS ((uint32_t)(4.0f * (SETPOINT_SPEED_M_S / ACCELERATION_RATE_M_S2) * 1000.0f)) 
 #define LOOP_PERIOD_US    1000
