@@ -71,12 +71,12 @@
 #define LEFT_MOTOR_IN2_PIN      36
 
 // Right Motor
-#define RIGHT_MOTOR_IN1_PIN     18   
-#define RIGHT_MOTOR_IN2_PIN     17   
+#define RIGHT_MOTOR_IN1_PIN     16
+#define RIGHT_MOTOR_IN2_PIN     15
 
 // Fan Motor
-#define FAN_MOTOR_IN1_PIN       16    
-#define FAN_MOTOR_IN2_PIN       15   
+#define FAN_MOTOR_IN1_PIN       18    
+#define FAN_MOTOR_IN2_PIN       17   
 
 // Shortcut Motor
 #define SCT_MOTOR_IN1_PIN       39    
