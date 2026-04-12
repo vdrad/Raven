@@ -51,6 +51,10 @@ void pid_compute(pid_context_t *pid) {
                   (pid->kD * pid->delta_error)   +
                   (pid->kI * pid->integral_sum);
 
+    // --- Compute FF Output -- 
+    if (pid->setpoint >= 0) pid->output += pid->ff_coef * pid->setpoint + pid->ff_bias;
+    else                    pid->output += pid->ff_coef * pid->setpoint - pid->ff_bias;
+
     // --- Output Saturation (Clamping) ---
     if (pid->output > pid->max_output) pid->output = pid->max_output;
     else if (pid->output < pid->min_output) pid->output = pid->min_output;

@@ -20,6 +20,10 @@ typedef struct {
     float kD;               /**< Derivative gain */
     float bias;             /**< Feedforward base value (added to the final output) */
 
+    /* --- Feed Forward --- */
+    float ff_coef;
+    float ff_bias;
+
     /* --- Inputs --- */
     float setpoint;         /**< Target value the controller aims to reach */
     float current_reading;  /**< Current measured value from the system */

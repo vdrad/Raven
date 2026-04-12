@@ -217,13 +217,16 @@ static void *state_test(void *args) {
     // ICM45686_i2c_scan();
     // encoder_peripheral_validation();
     // motor_set_voltage(MOTOR_RIGHT, 1.0f);
-    // odometry_update();
     // odometry_data_t odometry_data = odometry_get_data();
     // RAVEN_LOGI("TST", "Right Vel: %.1f | Distance: %.2fm", odometry_data.velocity_right_mm_s/1000.0f, odometry_data.distance_traveled_robot_m);
     // vTaskDelay(pdMS_TO_TICKS(10));
-
+    
     // controller_run();
     // controller_pid_tuner();
+    odometry_update();
+    odometry_data_t data = odometry_get_data();
+    RAVEN_LOGI("TST", "%.2fm", data.distance_traveled_robot_m);
+    vTaskDelay(pdMS_TO_TICKS(100));
 
     return NULL;
 }
@@ -333,6 +336,7 @@ static void state_machine_commands_task(void *pvParameters) {
 
             switch (cmd) {
                 case SMA_CMD_ENTER_TESTING_STATE:
+                    odometry_reset(); // todo: remove!!!
                     REQUEST_STATE(state_test);
                     break;
 
