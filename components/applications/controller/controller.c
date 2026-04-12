@@ -28,13 +28,13 @@
 
 /* --- GLOBAL PID INSTANCES --- */
 pid_context_t right_motor_pid = {
-    .kP     = 3.60f,               
-    .kI     = 120.0f,               
+    .kP     = 3.8834f,               
+    .kI     = 212.5336f,               
     .kD     = 0.0f,               
     .bias   = 0.0f,             
 
-    .ff_coef = 0.9f,
-    .ff_bias = 0.0f,
+    .ff_coef = 0.897f,
+    .ff_bias = 0.085f,
 
     .setpoint = 1.5f,        
     .current_reading = 0.0f,  
@@ -47,13 +47,13 @@ pid_context_t right_motor_pid = {
 };
 
 pid_context_t left_motor_pid = {
-    .kP     = 3.60f,               
-    .kI     = 120.0f,               
+    .kP     = 3.7977f,               
+    .kI     = 208.5858f,               
     .kD     = 0.0f,               
     .bias   = 0.0f,             
 
-    .ff_coef = 0.9f,
-    .ff_bias = 0.0f,
+    .ff_coef = 0.894f,
+    .ff_bias = 0.098f,
 
     .setpoint = 1.5f,        
     .current_reading = 0.0f,  
