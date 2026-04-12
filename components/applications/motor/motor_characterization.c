@@ -21,15 +21,14 @@
 /* ========================================================================== */
 
 // Duration of each test window in milliseconds
-#define CHAR_DURATION_MS 500
+#define CHAR_DURATION_MS 2000
 
 // Sampling frequency (10000 us = 100 Hz)
 #define CHAR_LOOP_PERIOD_US 10000
 #define TOTAL_SAMPLES (uint32_t)(CHAR_DURATION_MS / (CHAR_LOOP_PERIOD_US / 1000.0f))
 
 // Array of voltages to be tested sequentially
-// static const float test_voltages[] = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f, 10.0f, 11.0f, 12.0f};
-static const float test_voltages[] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f, 1.5f, 2.0f, 2.5f, 3.0f};
+static const float test_voltages[] = {0.5f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f, 10.0f, 11.0f, 12.0f};
 static const uint8_t num_test_voltages = sizeof(test_voltages) / sizeof(test_voltages[0]);
 
 /* ========================================================================== */
@@ -101,9 +100,9 @@ static void char_timer_callback(void* arg) {
 static void char_print_and_cleanup(void) {
     float applied_voltage = test_voltages[current_voltage_index];
 
-    RAVEN_LOGI(TAG, "--- CSV START ---");
-    RAVEN_LOGI(TAG, "Metadata,Voltage:%.1fV,Duration:%dms", applied_voltage, CHAR_DURATION_MS);
-    RAVEN_LOGI(TAG, "Point,DeltaTime_us,Vel_Left_m_s,Vel_Right_m_s");
+    raven_comm_send_message(TAG, "--- CSV START ---");
+    raven_comm_send_message(TAG, "Metadata,Voltage:%.1fV,Duration:%dms", applied_voltage, CHAR_DURATION_MS);
+    raven_comm_send_message(TAG, "Point,DeltaTime_us,Vel_Left_m_s,Vel_Right_m_s");
 
     for (int i = 0; i < TOTAL_SAMPLES; i++) {
         int64_t delta_t = (i > 0) ? (char_log_buffer[i].timestamp_us - char_log_buffer[i-1].timestamp_us) : 0;
@@ -115,12 +114,12 @@ static void char_print_and_cleanup(void) {
                  char_log_buffer[i].vel_left_m_s, 
                  char_log_buffer[i].vel_right_m_s);
                  
-        RAVEN_LOGI(TAG, "%s", row_buf);
+        raven_comm_send_message(TAG, "%s", row_buf);
         
         // Feed the Watchdog and flush the UART buffer
         vTaskDelay(pdMS_TO_TICKS(20)); 
     }
-    RAVEN_LOGI(TAG, "--- CSV END ---");
+    raven_comm_send_message(TAG, "--- CSV END ---");
 
     // Cleanup
     free(char_log_buffer);
@@ -129,10 +128,10 @@ static void char_print_and_cleanup(void) {
     // Prepare for the next voltage level
     current_voltage_index++;
     if (current_voltage_index >= num_test_voltages) {
-        RAVEN_LOGI(TAG, "Characterization complete! All voltages tested.");
+        raven_comm_send_message(TAG, "Characterization complete! All voltages tested.");
         current_voltage_index = 0; // Reset in case the user wants to run it again
     } else {
-        RAVEN_LOGI(TAG, "Ready for next step: %.1fV. Send 'MPASS' to start.", test_voltages[current_voltage_index]);
+        raven_comm_send_message(TAG, "Ready for next step: %.1fV. Send 'MPASS' to start.", test_voltages[current_voltage_index]);
     }
 }
 
@@ -159,7 +158,7 @@ static void start_voltage_step(void) {
 
     // 3. Apply voltage and start the timer
     float target_voltage = test_voltages[current_voltage_index];
-    RAVEN_LOGI(TAG, "Running step %d/%d: Applying %.1fV for %d ms...", 
+    raven_comm_send_message(TAG, "Running step %d/%d: Applying %.1fV for %d ms...", 
                current_voltage_index + 1, num_test_voltages, target_voltage, CHAR_DURATION_MS);
                
     motor_set_voltage(MOTOR_LEFT, target_voltage);
@@ -189,12 +188,12 @@ void motor_characterization_run(void) {
         esp_timer_create(&timer_args, &char_timer_handle);
     }
 
-    RAVEN_LOGI(TAG, "Entering Characterization Mode. Voltages to test: %d", num_test_voltages);
+    raven_comm_send_message(TAG, "Entering Characterization Mode. Voltages to test: %d", num_test_voltages);
 
     // Loop through all configured voltages
     for (int i = 0; i < num_test_voltages; i++) {
         current_voltage_index = i;
-        RAVEN_LOGI(TAG, "Ready for step %d/%d (%.1fV). Send 'PASS' to start or 'ABORT' to cancel.", 
+        raven_comm_send_message(TAG, "Ready for step %d/%d (%.1fV). Send 'PASS' to start or 'ABORT' to cancel.", 
                    i + 1, num_test_voltages, test_voltages[i]);
 
         // 1. Block execution waiting for user command for this step
@@ -223,5 +222,5 @@ void motor_characterization_run(void) {
         char_print_and_cleanup();
     }
 
-    RAVEN_LOGI(TAG, "Characterization sequence fully completed.");
+    raven_comm_send_message(TAG, "Characterization sequence fully completed.");
 }

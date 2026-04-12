@@ -1,3 +1,4 @@
+import re
 import customtkinter as ctk
 import pandas as pd
 import numpy as np
@@ -39,8 +40,10 @@ class DataProcessor:
         
         with open(filepath, 'r') as file:
             for line in file:
-                if "MCH: " in line:
-                    clean_line = line.split("MCH: ")[1].strip()
+                # Automatically recognize both "MCH: " and "[MCH] " log formats
+                match = re.search(r'(MCH:\s*|\[MCH\]\s*)', line)
+                if match:
+                    clean_line = line[match.end():].strip()
                 else:
                     clean_line = line.strip()
                     
@@ -66,6 +69,13 @@ class DataProcessor:
                     if len(parts) >= 4:
                         data_rows.append(parts)
                         
+        # Failsafe in case the final "--- CSV END ---" is missing from the file
+        if current_voltage is not None and data_rows:
+            df = pd.DataFrame(data_rows, columns=['Point', 'DeltaTime_us', 'Vel_Left', 'Vel_Right'])
+            df = df.astype({'DeltaTime_us': float, 'Vel_Left': float, 'Vel_Right': float})
+            df['Time_s'] = df['DeltaTime_us'].cumsum() / 1e6
+            datasets[current_voltage] = df
+            
         return datasets
 
     @staticmethod
