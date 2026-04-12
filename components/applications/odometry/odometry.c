@@ -93,8 +93,8 @@ void odometry_update(void) {
     if (dt_s <= 0.001f) return;
 
     // Calculate delta ticks
-    int delta_left = left_count - last_left_count;
-    int delta_right = right_count - last_right_count;
+    int delta_left  = (int16_t)(left_count - last_left_count);
+    int delta_right = (int16_t)(right_count - last_right_count);
 
     // Convert to meters
     float left_dist_m = delta_left * METERS_PER_PULSE;
