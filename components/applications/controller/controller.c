@@ -28,8 +28,8 @@
 
 /* --- GLOBAL PID INSTANCES --- */
 pid_context_t right_motor_pid = {
-    .kP     = 0.00f,               
-    .kI     = 0.0f,               
+    .kP     = 3.60f,               
+    .kI     = 120.0f,               
     .kD     = 0.0f,               
     .bias   = 0.0f,             
 
@@ -47,12 +47,12 @@ pid_context_t right_motor_pid = {
 };
 
 pid_context_t left_motor_pid = {
-    .kP     = 0.00f,               
-    .kI     = 0.0f,               
+    .kP     = 3.60f,               
+    .kI     = 120.0f,               
     .kD     = 0.0f,               
     .bias   = 0.0f,             
 
-    .ff_coef = 1.0f,
+    .ff_coef = 0.9f,
     .ff_bias = 0.0f,
 
     .setpoint = 1.5f,        
