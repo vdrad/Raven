@@ -27,6 +27,22 @@
 #define TAG "ADC"
 
 /* ========================================================================== */
+/* MACROS & CONFIGURATIONS                                                    */
+/* ========================================================================== */
+
+/** @brief SPI Clock frequency set to 10 MHz. */
+#define AD7490_SPI_FREQUENCY_HZ     (10 * 1000 * 1000) 
+
+// AD7490 CONTROL REGISTER (CR) BIT VALUES
+#define AD7490_CR_WRITE_VALUE       1
+#define AD7490_CR_SEQ_VALUE         1
+#define AD7490_CR_PM_VALUE          3
+#define AD7490_CR_SHADOW_VALUE      1
+#define AD7490_CR_WEAK_VALUE        1
+#define AD7490_CR_RANGE_VALUE       1
+#define AD7490_CR_CODING_VALUE      1
+
+/* ========================================================================== */
 /* PRIVATE VARIABLES                                                          */
 /* ========================================================================== */
 
