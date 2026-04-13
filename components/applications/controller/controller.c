@@ -78,9 +78,9 @@ void controller_init(void) {
     RAVEN_LOGI(TAG, "Initialized successfully.");
     
     // Broadcast initial PID states to the UI/App
-    raven_comm_send_message(TAG, "Active | R_PID: P=%.2f I=%.2f D=%.2f", 
+    raven_comm_send_message(TAG, "RM PID: kP=%.2f kI=%.2f kD=%.2f", 
                             right_motor_pid.kP, right_motor_pid.kI, right_motor_pid.kD);
-    raven_comm_send_message(TAG, "Active | L_PID: P=%.2f I=%.2f D=%.2f", 
+    raven_comm_send_message(TAG, "LM PID: kP=%.2f kI=%.2f kD=%.2f", 
                             left_motor_pid.kP, left_motor_pid.kI, left_motor_pid.kD);
 }
 

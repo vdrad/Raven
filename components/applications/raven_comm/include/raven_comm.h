@@ -32,6 +32,7 @@ typedef enum {
     CMD_UNKNOWN = 0,                /**< Unrecognized command header. */
     CMD_VALIDATION,                 /**< Hardware or peripheral validation command (Header: 'V'). */
     CMD_STATE_MACHINE,              /**< State Machine command (Header: 'S'). */
+    CMD_LINE_READING,               /**< Line Reading command (Header: 'L'). */
     CMD_CONTROLLER_TUNING,          /**< PID Controller command (Header: 'P'). */
     CMD_MOTOR_CHARACTERIZATION,     /**< Motor Characterization command (Header: 'M'). */
 

@@ -26,11 +26,11 @@
 #include "rgb_led.h"
 #include "buzzer.h"
 #include "battery_sensor.h"
-#include "AD7490.h"
 #include "ICM45686.h"
 #include "motor.h"
 #include "odometry.h"
 #include "controller.h"
+#include "line_reading.h"
 
 #define TAG "SMA"
 
@@ -67,6 +67,7 @@ typedef void *(*state_callback)(void *);
  */
 typedef enum {
     SMA_CMD_UNKNOWN = 0,                        /**< Unrecognized command header. */
+    SMA_CMD_ENTER_LINE_CALIBRATION_STATE,       /**< Line Calibration command (Header: 'S', Payload: 'CAL'). */
     SMA_CMD_ENTER_TESTING_STATE,                /**< State Machine command (Header: 'S', Payload: 'TST'). */
     SMA_CMD_ENTER_VALIDATION_STATE,             /**< Hardware validation command (Header: 'S', Payload: 'VLD'). */
     SMA_CMD_ENTER_PID_TUNING_STATE,             /**< PID Tuning command (Header: 'S', Payload: 'PID'). */
@@ -81,6 +82,7 @@ typedef enum {
 ADD_STATE(wait_user_connection);
 ADD_STATE(initialization);
 ADD_STATE(configuration);
+ADD_STATE(line_calibration);
 ADD_STATE(test);
 ADD_STATE(validation);
 ADD_STATE(pid_tuning);
@@ -183,11 +185,11 @@ static void *state_initialization(void *args) {
     rgb_led_init();
     buzzer_init();
     battery_sensor_init();
-    AD7490_init();
     ICM45686_init();
     motor_init();
     odometry_init();
     controller_init();
+    line_reading_init();
 
     raven_comm_send_message(TAG, "All devices initialized.");
     REQUEST_STATE(state_configuration);
@@ -201,6 +203,16 @@ static void *state_initialization(void *args) {
 static void *state_configuration(void *args) {
     // Add configuration logic here
     vTaskDelay(pdMS_TO_TICKS(500));
+    return NULL;
+}
+
+/**
+ * @brief Handles robot line calibration.
+ * @return NULL
+ */
+static void *state_line_calibration(void *args) {
+    line_reading_calibrate();
+    REQUEST_STATE(state_configuration);
     return NULL;
 }
 
@@ -223,10 +235,13 @@ static void *state_test(void *args) {
     
     // controller_run();
     // controller_pid_tuner();
-    odometry_update();
-    odometry_data_t data = odometry_get_data();
-    RAVEN_LOGI("TST", "%.2fm", data.distance_traveled_robot_m);
-    vTaskDelay(pdMS_TO_TICKS(100));
+    // odometry_update();
+    // odometry_data_t data = odometry_get_data();
+    // RAVEN_LOGI("TST", "%.2fm", data.distance_traveled_robot_m);
+    // vTaskDelay(pdMS_TO_TICKS(100));
+
+    // line_reading_raw_validation();
+    line_reading_normalized_validation();
 
     return NULL;
 }
@@ -294,6 +309,7 @@ static void apply_pending_state_transition(void) {
  * @return The corresponding state_machine_cmd_type_t enum value.
  */
 static state_machine_cmd_type_t command_decoder(char *payload) {
+    if (strcmp(payload, "CAL") == 0) return SMA_CMD_ENTER_LINE_CALIBRATION_STATE;
     if (strcmp(payload, "TST") == 0) return SMA_CMD_ENTER_TESTING_STATE;
     if (strcmp(payload, "VLD") == 0) return SMA_CMD_ENTER_VALIDATION_STATE;
     if (strcmp(payload, "PID") == 0) return SMA_CMD_ENTER_PID_TUNING_STATE;
@@ -336,20 +352,19 @@ static void state_machine_commands_task(void *pvParameters) {
 
             switch (cmd) {
                 case SMA_CMD_ENTER_TESTING_STATE:
-                    odometry_reset(); // todo: remove!!!
                     REQUEST_STATE(state_test);
                     break;
-
                 case SMA_CMD_ENTER_VALIDATION_STATE:
                     REQUEST_STATE(state_validation);
                     break;
-
                 case SMA_CMD_ENTER_PID_TUNING_STATE:
                     REQUEST_STATE(state_pid_tuning);
                     break;
-
                 case SMA_CMD_ENTER_MOTOR_CHARACTERIZATION_STATE:
                     REQUEST_STATE(state_motor_characterization);
+                    break;
+                case SMA_CMD_ENTER_LINE_CALIBRATION_STATE:
+                    REQUEST_STATE(state_line_calibration);
                     break;
 
                 default:
