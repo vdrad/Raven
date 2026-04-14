@@ -14,9 +14,11 @@
 #include <stdint.h>
 #include <string.h>
 
-// Standard ESP-IDF FreeRTOS includes
+// Standard ESP-IDF and FreeRTOS includes
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "nvs.h"
+#include "nvs_flash.h"
 
 // Project-specific includes
 #include "raven_log.h"
@@ -147,6 +149,14 @@ const uint8_t *state_get_name(void) {
 }
 
 void state_machine_init(void) {
+    // TODO: move this to robot_manager
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
+
     // Initialize tasks for failsafe and background command listening
     xTaskCreate(state_machine_task, "sma_task", 4096, NULL, 5, &state_machine_task_handle);
     xTaskCreate(state_machine_commands_task, "sma_cmd_task", 2048, NULL, 4, &state_machine_commands_task_handle);
