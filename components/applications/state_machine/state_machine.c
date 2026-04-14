@@ -195,11 +195,11 @@ static void *state_initialization(void *args) {
     rgb_led_init();
     buzzer_init();
     battery_sensor_init();
-    ICM45686_init();
     motor_init();
     odometry_init();
     controller_init();
     line_reading_init();
+    ICM45686_init();
 
     raven_comm_send_message(TAG, "All devices initialized.");
     REQUEST_STATE(state_configuration);
