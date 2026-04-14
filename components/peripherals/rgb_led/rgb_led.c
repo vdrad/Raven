@@ -67,11 +67,11 @@ void rgb_led_init(void) {
     ESP_ERROR_CHECK(rmt_new_led_strip_encoder(&encoder_config, &led_encoder));
     ESP_ERROR_CHECK(rmt_enable(led_chan));
 
+    initialized = true;
     rgb_led_clear();
     rgb_led_show();
 
     RAVEN_LOGI(TAG, "Initialized successfully.");
-    initialized = true;
 }
 
 void rgb_led_set_color(uint8_t index, uint8_t red, uint8_t green, uint8_t blue) {
