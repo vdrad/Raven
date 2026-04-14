@@ -14,6 +14,10 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+// NVS Includes
+#include "nvs_flash.h"
+#include "nvs.h"
+
 // Project Includes
 #include "raven_log.h"
 #include "raven_comm.h"
@@ -67,13 +71,99 @@ static inline uint16_t normalize_and_clamp(uint16_t raw, uint16_t min, uint16_t 
 }
 
 static esp_err_t load_from_nvs(void) {
-    // TODO: Future NVS implementation
-    return ESP_ERR_NOT_SUPPORTED;
+    nvs_handle_t my_handle;
+    esp_err_t err;
+
+    // Creates the 'line_calib' partition inside NVS.
+    err = nvs_open("line_calib", NVS_READONLY, &my_handle);
+    if (err != ESP_OK) {
+        RAVEN_LOGW(TAG, "NVS open failed (Read): %s", esp_err_to_name(err));
+        return err;
+    }
+
+    // Reads minimum-values array.
+    size_t required_size = sizeof(min_raw_values);
+    err = nvs_get_blob(my_handle, "min_vals", min_raw_values, &required_size);
+    if (err != ESP_OK) {
+        RAVEN_LOGW(TAG, "Failed to read min_vals from NVS: %s", esp_err_to_name(err));
+        nvs_close(my_handle);
+        return err;
+    }
+
+    // Reads maximum-values array.
+    required_size = sizeof(max_raw_values);
+    err = nvs_get_blob(my_handle, "max_vals", max_raw_values, &required_size);
+    if (err != ESP_OK) {
+        RAVEN_LOGW(TAG, "Failed to read max_vals from NVS: %s", esp_err_to_name(err));
+        nvs_close(my_handle);
+        return err;
+    }
+
+    nvs_close(my_handle);
+    
+    raven_comm_send_message(TAG, "Calibration data successfully LOADED from NVS.");
+    return ESP_OK;
 }
 
 static esp_err_t save_to_nvs(void) {
-    // TODO: Future NVS implementation
-    return ESP_ERR_NOT_SUPPORTED;
+    nvs_handle_t my_handle;
+    esp_err_t err;
+
+    // Opens 'line_calib' partition in write mode.
+    err = nvs_open("line_calib", NVS_READWRITE, &my_handle);
+    if (err != ESP_OK) {
+        RAVEN_LOGE(TAG, "NVS open failed (Write): %s", esp_err_to_name(err));
+        return err;
+    }
+
+    // Stores minimum-values array.
+    err = nvs_set_blob(my_handle, "min_vals", min_raw_values, sizeof(min_raw_values));
+    if (err != ESP_OK) {
+        RAVEN_LOGE(TAG, "Failed to write min_vals: %s", esp_err_to_name(err));
+        nvs_close(my_handle);
+        return err;
+    }
+
+    // Stores maximum-values array.
+    err = nvs_set_blob(my_handle, "max_vals", max_raw_values, sizeof(max_raw_values));
+    if (err != ESP_OK) {
+        RAVEN_LOGE(TAG, "Failed to write max_vals: %s", esp_err_to_name(err));
+        nvs_close(my_handle);
+        return err;
+    }
+
+    // Commits changes
+    err = nvs_commit(my_handle);
+    nvs_close(my_handle);
+
+    if (err == ESP_OK)  raven_comm_send_message(TAG, "Calibration data successfully SAVED to NVS.");
+    else RAVEN_LOGE(TAG, "Failed to commit NVS: %s", esp_err_to_name(err));
+    
+    return err;
+}
+
+static void send_calibration_report(void) {
+    raven_comm_send_message(TAG, "Manual calibration complete. Captured extremes:");
+
+    // Print MIN extremes
+    raven_comm_send_message(TAG, 
+        "MIN | L0-1: %4d %4d | S0-S10: %4d %4d %4d %4d %4d %4d %4d %4d %4d %4d %4d | R1-0: %4d %4d",
+        min_raw_values[LM0], min_raw_values[LM1],
+        min_raw_values[LS0], min_raw_values[LS1], min_raw_values[LS2], min_raw_values[LS3],
+        min_raw_values[LS4], min_raw_values[LS5], min_raw_values[LS6], min_raw_values[LS7],
+        min_raw_values[LS8], min_raw_values[LS9], min_raw_values[LS10],
+        min_raw_values[RM1], min_raw_values[RM0]
+    );
+
+    // Print MAX extremes
+    raven_comm_send_message(TAG, 
+        "MAX | L0-1: %4d %4d | S0-S10: %4d %4d %4d %4d %4d %4d %4d %4d %4d %4d %4d | R1-0: %4d %4d",
+        max_raw_values[LM0], max_raw_values[LM1],
+        max_raw_values[LS0], max_raw_values[LS1], max_raw_values[LS2], max_raw_values[LS3],
+        max_raw_values[LS4], max_raw_values[LS5], max_raw_values[LS6], max_raw_values[LS7],
+        max_raw_values[LS8], max_raw_values[LS9], max_raw_values[LS10],
+        max_raw_values[RM1], max_raw_values[RM0]
+    );
 }
 
 /* ========================================================================== */
@@ -87,7 +177,7 @@ void line_calibration_init(void) {
         min_raw_values[i] = UINT16_MAX;
         max_raw_values[i] = 0;
     }
-    
+
     initialized = true;
     RAVEN_LOGI(TAG, "Calibration module initialized.");
     raven_comm_send_message(TAG, "Normalized value range: 0-%d", CALIBRATION_MAX_VALUE);
@@ -100,7 +190,10 @@ void line_calibration_run(calibration_mode_t mode) {
     }
 
     if (mode == CALIB_MODE_LOAD_FROM_NVS) {
-        if (load_from_nvs() == ESP_OK) return;
+        if (load_from_nvs() == ESP_OK) {
+            send_calibration_report();
+            return;
+        }
         RAVEN_LOGW(TAG, "Failed to load NVS. Falling back to manual calibration.");
         mode = CALIB_MODE_MANUAL_NO_SAVE;
     }
@@ -127,27 +220,7 @@ void line_calibration_run(calibration_mode_t mode) {
         vTaskDelay(pdMS_TO_TICKS(20)); // Yield to FreeRTOS watchdog
     }
 
-    raven_comm_send_message(TAG, "Manual calibration complete. Captured extremes:");
-
-    // Print MIN extremes
-    raven_comm_send_message(TAG, 
-        "MIN | L0-1: %4d %4d | S0-S10: %4d %4d %4d %4d %4d %4d %4d %4d %4d %4d %4d | R1-0: %4d %4d",
-        min_raw_values[LM0], min_raw_values[LM1],
-        min_raw_values[LS0], min_raw_values[LS1], min_raw_values[LS2], min_raw_values[LS3],
-        min_raw_values[LS4], min_raw_values[LS5], min_raw_values[LS6], min_raw_values[LS7],
-        min_raw_values[LS8], min_raw_values[LS9], min_raw_values[LS10],
-        min_raw_values[RM1], min_raw_values[RM0]
-    );
-
-    // Print MAX extremes
-    raven_comm_send_message(TAG, 
-        "MAX | L0-1: %4d %4d | S0-S10: %4d %4d %4d %4d %4d %4d %4d %4d %4d %4d %4d | R1-0: %4d %4d",
-        max_raw_values[LM0], max_raw_values[LM1],
-        max_raw_values[LS0], max_raw_values[LS1], max_raw_values[LS2], max_raw_values[LS3],
-        max_raw_values[LS4], max_raw_values[LS5], max_raw_values[LS6], max_raw_values[LS7],
-        max_raw_values[LS8], max_raw_values[LS9], max_raw_values[LS10],
-        max_raw_values[RM1], max_raw_values[RM0]
-    );
+    send_calibration_report();
 
     if (mode == CALIB_MODE_MANUAL_SAVE_NVS) save_to_nvs();
 }
