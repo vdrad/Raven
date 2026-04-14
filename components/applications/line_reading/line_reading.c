@@ -47,7 +47,7 @@ void line_reading_calibrate(void) {
     calibration_mode_t mode;
     bool abort_requested = false;
 
-    // Loop bloqueante seguro: aguarda a task de comandos receber um input válido
+    // Waits for a valid input.
     while (!line_commands_get_calibration_request(&mode, &abort_requested)) {
         vTaskDelay(pdMS_TO_TICKS(100));
     }
@@ -55,14 +55,10 @@ void line_reading_calibrate(void) {
     if (abort_requested) {
         raven_comm_send_message(TAG, "Calibration aborted by user.");
     } else {
-        // Envia mensagem de feedback com base no modo selecionado via BLE
-        if (mode == CALIB_MODE_MANUAL_NO_SAVE) {
-            raven_comm_send_message(TAG, "Starting: Manual Calibration (No Save).");
-        } else if (mode == CALIB_MODE_MANUAL_SAVE_NVS) {
-            raven_comm_send_message(TAG, "Starting: Manual Calibration (Saving to NVS).");
-        } else if (mode == CALIB_MODE_LOAD_FROM_NVS) {
-            raven_comm_send_message(TAG, "Starting: Load Calibration from NVS.");
-        }
+        // Sends feedback message based on chosen mode.
+        if (mode == CALIB_MODE_MANUAL_NO_SAVE)        raven_comm_send_message(TAG, "Starting: Manual Calibration (No Save).");
+        else if (mode == CALIB_MODE_MANUAL_SAVE_NVS)  raven_comm_send_message(TAG, "Starting: Manual Calibration (Saving to NVS).");
+        else if (mode == CALIB_MODE_LOAD_FROM_NVS)    raven_comm_send_message(TAG, "Starting: Load Calibration from NVS.");
         
         line_calibration_run(mode);
     }
