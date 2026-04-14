@@ -22,6 +22,8 @@
 
 #define TAG "ENC"
 
+#define GLITCH_FILTER_VALUE_NS  250
+
 /**
  * @brief Structure representing a hardware encoder instance.
  */
@@ -57,7 +59,7 @@ static void encoder_init_instance(encoder_t *enc) {
 
     /* Glitch filter configuration for high-speed signals */
     pcnt_glitch_filter_config_t filter_config = {
-        .max_glitch_ns = 250,
+        .max_glitch_ns = GLITCH_FILTER_VALUE_NS,
     };
 
     /* Allocate the PCNT unit */
@@ -85,7 +87,7 @@ static void encoder_init_instance(encoder_t *enc) {
     
     ESP_ERROR_CHECK(pcnt_channel_set_edge_action(chan_b, PCNT_CHANNEL_EDGE_ACTION_INCREASE, PCNT_CHANNEL_EDGE_ACTION_DECREASE));
     ESP_ERROR_CHECK(pcnt_channel_set_level_action(chan_b, PCNT_CHANNEL_LEVEL_ACTION_KEEP, PCNT_CHANNEL_LEVEL_ACTION_INVERSE));
-
+    
     /* Enable, clear, and start the hardware counter */
     ESP_ERROR_CHECK(pcnt_unit_enable(enc->unit_handle));
     ESP_ERROR_CHECK(pcnt_unit_clear_count(enc->unit_handle));
@@ -103,7 +105,7 @@ void encoder_init(void) {
     encoder_init_instance(&right_encoder);
     
     RAVEN_LOGI(TAG, "Initialized successfully.");
-    raven_comm_send_message(TAG, "Glitch filter value: %dns", 250);
+    raven_comm_send_message(TAG, "Glitch filter value: %dns", GLITCH_FILTER_VALUE_NS);
     
     initialized = true;
 }
