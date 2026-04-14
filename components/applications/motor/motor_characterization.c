@@ -204,6 +204,7 @@ void motor_characterization_run(void) {
                     step_triggered = true;
                 } else if (strcmp(received_cmd, "ABORT") == 0) {
                     RAVEN_LOGW(TAG, "Characterization aborted by user.");
+                    raven_comm_send_message(TAG, "Characterization aborted by user.");
                     return; // Abort the entire function and return control to the State Machine
                 }
             }
