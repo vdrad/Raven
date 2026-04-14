@@ -7,11 +7,13 @@
 // Standard Libraries
 #include <stdbool.h>
 
-// FreeRTOS
+// ESP-IDF Inlcudes
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "driver/gpio.h"
 
 // Project Includes
+#include "pinout.h"
 #include "AD7490.h"
 #include "raven_log.h"
 #include "raven_comm.h"
@@ -21,8 +23,19 @@
 #define TAG "LIN"
 static bool initialized = false;
 
+void line_reading_enable_sensors(void) {
+    gpio_set_level(LINE_SENSOR_IO_PIN, 1);
+}
+
+void line_reading_disable_sensors(void) {
+    gpio_set_level(LINE_SENSOR_IO_PIN, 0);
+}
+
 void line_reading_init(void) {
     if (initialized) return;
+
+    gpio_set_direction(LINE_SENSOR_IO_PIN, GPIO_MODE_OUTPUT);
+    line_reading_enable_sensors();
 
     AD7490_init();
     line_calibration_init();
@@ -59,7 +72,7 @@ void line_reading_calibrate(void) {
         if (mode == CALIB_MODE_MANUAL_NO_SAVE)        raven_comm_send_message(TAG, "Starting: Manual Calibration (No Save).");
         else if (mode == CALIB_MODE_MANUAL_SAVE_NVS)  raven_comm_send_message(TAG, "Starting: Manual Calibration (Saving to NVS).");
         else if (mode == CALIB_MODE_LOAD_FROM_NVS)    raven_comm_send_message(TAG, "Starting: Load Calibration from NVS.");
-        
+
         line_calibration_run(mode);
     }
 }

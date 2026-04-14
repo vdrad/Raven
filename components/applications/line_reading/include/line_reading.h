@@ -36,6 +36,9 @@ typedef enum {
  */
 void line_reading_init(void);
 
+void line_reading_enable_sensors(void);
+void line_reading_disable_sensors(void);
+
 /**
  * @brief Gets the raw ADC readings from all active channels.
  * * @param array Pointer to an array of size NUMBER_OF_ACTIVE_CHANNELS.
