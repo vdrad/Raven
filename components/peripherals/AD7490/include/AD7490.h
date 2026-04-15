@@ -16,7 +16,7 @@
 /* MACROS & CONFIGURATIONS                                                    */
 /* ========================================================================== */
 
-#define NUMBER_OF_ACTIVE_CHANNELS   15
+#define NUMBER_OF_LINE_SENSORS   15
 
 /* ========================================================================== */
 /* PUBLIC API                                                                 */
@@ -34,9 +34,9 @@ void AD7490_init(void);
  * @brief Reads all configured channels sequentially from the AD7490.
  *
  * @param array Pointer to an array of uint16_t where the results will be stored.
- * The array must have at least NUMBER_OF_ACTIVE_CHANNELS elements.
+ * The array must have at least NUMBER_OF_LINE_SENSORS elements.
  */
-void AD7490_read_all_channels(uint16_t array[NUMBER_OF_ACTIVE_CHANNELS]);
+void AD7490_read_all_channels(uint16_t array[NUMBER_OF_LINE_SENSORS]);
 
 /**
  * @brief Executes a hardware validation routine.

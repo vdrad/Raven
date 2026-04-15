@@ -1,55 +1,51 @@
 /**
  * @file line_reading.h
- * @brief Header for the line sensor reading module.
+ * @brief Master module for line detection, abstracting SPI reads, calibration, and position.
  */
 #pragma once
 
 #include <stdint.h>
+#include <stdbool.h>
 
-#define NUMBER_OF_ACTIVE_CHANNELS   15
-#define NUMBER_OF_LINE_SENSORS      11
-#define NUMBER_OF_MARKER_SENSORS    (NUMBER_OF_ACTIVE_CHANNELS - NUMBER_OF_LINE_SENSORS)
+#include "line_configs.h"
+#include "line_position.h"
+// #include "line_markers.h"
 
-/**
- * @brief Mapping of the AD7490 channels to physical robot sensors.
- */
-typedef enum {
-    LM1     = 0,                    /**< Left Marker 1 (Inner) */
-    LM0     = 1,                    /**< Left Marker 0 (Outer) */
-    LS0     = 2,                    /**< Central Line Sensor 0 (Leftmost) */
-    LS1     = 3,                    /**< Central Line Sensor 1 */
-    LS2     = 4,                    /**< Central Line Sensor 2 */
-    LS3     = 5,                    /**< Central Line Sensor 3 */
-    LS4     = 6,                    /**< Central Line Sensor 4 */
-    LS5     = 7,                    /**< Central Line Sensor 5 (Center) */
-    LS6     = 8,                    /**< Central Line Sensor 6 */
-    LS7     = 9,                    /**< Central Line Sensor 7 */
-    LS8     = 10,                   /**< Central Line Sensor 8 */
-    LS9     = 11,                   /**< Central Line Sensor 9 */
-    LS10    = 12,                  /**< Central Line Sensor 10 (Rightmost) */
-    RM1     = 13,                   /**< Right Marker 1 (Inner) */
-    RM0     = 14                    /**< Right Marker 0 (Outer) */
-} line_sensor_index_t;
+/* ========================================================================== */
+/* PUBLIC DEFINITIONS & STRUCTURES                                            */
+/* ========================================================================== */
 
 /**
- * @brief Initializes the AD7490 ADC and the reading module.
+ * @brief Master struct containing all processed line data.
+ * This is the only data structure the main control loop needs to read.
  */
+typedef struct {
+    line_position_data_t position;    /**< Center of mass and line tracking state */
+    // line_markers_data_t markers;   /**< Detected intersections and markers  */
+    bool is_valid;                    /**< True if the SPI read was successful */
+} line_reading_data_t;
+
+/* ========================================================================== */
+/* PUBLIC API                                                                 */
+/* ========================================================================== */
+
 void line_reading_init(void);
-
 void line_reading_enable_sensors(void);
 void line_reading_disable_sensors(void);
 
 /**
- * @brief Gets the raw ADC readings from all active channels.
- * * @param array Pointer to an array of size NUMBER_OF_ACTIVE_CHANNELS.
+ * @brief Master update function. Fetches SPI data, normalizes it, and updates position/markers.
+ * @note Should be called at a fixed high frequency (e.g., 1ms or 2ms) from a FreeRTOS task.
  */
-void line_reading_get_raw(uint16_t array[NUMBER_OF_ACTIVE_CHANNELS]);
-
-void line_reading_calibrate(void);
+void line_reading_update(void);
 
 /**
- * @brief Runs a 50-sample validation loop and prints the raw results to the console.
+ * @brief Returns the latest processed line data (atomic/thread-safe).
  */
-void line_reading_raw_validation(void);
+line_reading_data_t line_reading_get_data(void);
 
+// Calibration and Debug
+void line_reading_calibrate(void);
+void line_reading_raw_validation(void);
 void line_reading_normalized_validation(void);
+void line_reading_position_validation(void);

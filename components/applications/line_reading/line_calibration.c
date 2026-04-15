@@ -21,6 +21,7 @@
 // Project Includes
 #include "raven_log.h"
 #include "raven_comm.h"
+#include "AD7490.h"
 
 #define TAG "CAL" 
 
@@ -29,11 +30,11 @@
 /* ========================================================================== */
 
 static bool initialized = false;
-static uint16_t min_raw_values[NUMBER_OF_ACTIVE_CHANNELS];
-static uint16_t max_raw_values[NUMBER_OF_ACTIVE_CHANNELS];
+static uint16_t min_raw_values[NUMBER_OF_LINE_SENSORS];
+static uint16_t max_raw_values[NUMBER_OF_LINE_SENSORS];
 
 /** @brief Mapping for internal iteration of line sensors. */
-static const uint8_t LINE_INDEX_MAP[NUMBER_OF_LINE_SENSORS] = {
+static const uint8_t LINE_INDEX_MAP[NUMBER_OF_FRONTAL_SENSORS] = {
     LS0, LS1, LS2, LS3, LS4, LS5, LS6, LS7, LS8, LS9, LS10
 };
 
@@ -173,7 +174,7 @@ static void send_calibration_report(void) {
 void line_calibration_init(void) {
     if (initialized) return;
     
-    for (uint8_t i = 0; i < NUMBER_OF_ACTIVE_CHANNELS; i++) {
+    for (uint8_t i = 0; i < NUMBER_OF_LINE_SENSORS; i++) {
         min_raw_values[i] = UINT16_MAX;
         max_raw_values[i] = 0;
     }
@@ -201,19 +202,19 @@ void line_calibration_run(calibration_mode_t mode) {
     raven_comm_send_message(TAG, "Starting manual calibration. Sweep the robot across the line for %d ms.", CALIBRATION_DURATION_MS);
 
     // Reset values for new calibration
-    for (uint8_t i = 0; i < NUMBER_OF_ACTIVE_CHANNELS; i++) {
+    for (uint8_t i = 0; i < NUMBER_OF_LINE_SENSORS; i++) {
         min_raw_values[i] = UINT16_MAX;
         max_raw_values[i] = 0;
     }
 
     int64_t start_time = esp_timer_get_time();
     int64_t duration_us = (int64_t)CALIBRATION_DURATION_MS * 1000;
-    uint16_t current_raw[NUMBER_OF_ACTIVE_CHANNELS];
+    uint16_t current_raw[NUMBER_OF_LINE_SENSORS];
 
     // Calibration Loop
     while ((esp_timer_get_time() - start_time) < duration_us) {
-        line_reading_get_raw(current_raw);
-        for (uint8_t i = 0; i < NUMBER_OF_ACTIVE_CHANNELS; i++) {
+        AD7490_read_all_channels(current_raw);
+        for (uint8_t i = 0; i < NUMBER_OF_LINE_SENSORS; i++) {
             if (current_raw[i] < min_raw_values[i]) min_raw_values[i] = current_raw[i];
             if (current_raw[i] > max_raw_values[i]) max_raw_values[i] = current_raw[i];
         }
@@ -225,8 +226,8 @@ void line_calibration_run(calibration_mode_t mode) {
     if (mode == CALIB_MODE_MANUAL_SAVE_NVS) save_to_nvs();
 }
 
-void line_calibration_get_normalized(const uint16_t raw_readings[NUMBER_OF_ACTIVE_CHANNELS], 
-                                     uint16_t calibrated_line[NUMBER_OF_LINE_SENSORS], 
+void line_calibration_get_normalized(const uint16_t raw_readings[NUMBER_OF_LINE_SENSORS], 
+                                     uint16_t calibrated_line[NUMBER_OF_FRONTAL_SENSORS], 
                                      uint16_t calibrated_markers[NUMBER_OF_MARKER_SENSORS]) {
     if (!initialized) {
         raven_comm_send_message(TAG, "Not initialized!");
@@ -234,7 +235,7 @@ void line_calibration_get_normalized(const uint16_t raw_readings[NUMBER_OF_ACTIV
     }
 
     // Process Central Line Sensors
-    for (uint8_t i = 0; i < NUMBER_OF_LINE_SENSORS; i++) {
+    for (uint8_t i = 0; i < NUMBER_OF_FRONTAL_SENSORS; i++) {
         uint8_t idx = LINE_INDEX_MAP[i];
         calibrated_line[i] = normalize_and_clamp(raw_readings[idx], min_raw_values[idx], max_raw_values[idx]);
     }
@@ -252,15 +253,15 @@ void line_calibration_validate_output(void) {
         return;
     }
 
-    uint16_t raw[NUMBER_OF_ACTIVE_CHANNELS];
-    uint16_t line[NUMBER_OF_LINE_SENSORS];
+    uint16_t raw[NUMBER_OF_LINE_SENSORS];
+    uint16_t line[NUMBER_OF_FRONTAL_SENSORS];
     uint16_t markers[NUMBER_OF_MARKER_SENSORS];
     
     raven_comm_send_message(TAG, "=== STARTING CALIBRATED OUTPUT VALIDATION ===");
 
     for (int i = 0; i < 50; i++) {
         // Single synchronized snapshot of the sensors
-        line_reading_get_raw(raw);
+        AD7490_read_all_channels(raw);
         
         // Pure math processing
         line_calibration_get_normalized(raw, line, markers);

@@ -1,6 +1,6 @@
 /**
  * @file line_reading.c
- * @brief Implementation of the raw line reading module via AD7490.
+ * @brief Implementation of the master line reading and processing facade.
  */
 #include "line_reading.h"
 
@@ -17,11 +17,22 @@
 #include "AD7490.h"
 #include "raven_log.h"
 #include "raven_comm.h"
-#include "line_calibration.h"
 #include "line_commands.h"
+#include "line_calibration.h"
+#include "line_position.h"
 
 #define TAG "LIN"
+
+/* ========================================================================== */
+/* PRIVATE VARIABLES                                                          */
+/* ========================================================================== */
+
 static bool initialized = false;
+static line_reading_data_t current_data = {0};
+
+/* ========================================================================== */
+/* HARDWARE CONTROL & INIT                                                    */
+/* ========================================================================== */
 
 void line_reading_enable_sensors(void) {
     gpio_set_level(LINE_SENSOR_IO_PIN, 1);
@@ -34,21 +45,58 @@ void line_reading_disable_sensors(void) {
 void line_reading_init(void) {
     if (initialized) return;
 
+    // Turns line sensors ON
     gpio_set_direction(LINE_SENSOR_IO_PIN, GPIO_MODE_OUTPUT);
     line_reading_enable_sensors();
 
+    // Initializes submodules
     AD7490_init();
     line_calibration_init();
+
+    // Spawns command listener task
     xTaskCreate(line_commands_task, "line_commands_task", 4096, NULL, 5, NULL);
 
     initialized = true;
     RAVEN_LOGI(TAG, "Initialized successfully.");
 }
 
-void line_reading_get_raw(uint16_t array[NUMBER_OF_ACTIVE_CHANNELS]) {
+/* ========================================================================== */
+/* CORE UPDATE LOOP (THE FACADE)                                              */
+/* ========================================================================== */
+
+void line_reading_update(void) {
     if (!initialized) return;
-    AD7490_read_all_channels(array);
+
+    uint16_t raw_readings[NUMBER_OF_LINE_SENSORS];
+    uint16_t norm_frontal[NUMBER_OF_FRONTAL_SENSORS];
+    uint16_t norm_markers[NUMBER_OF_MARKER_SENSORS];
+
+    // 1. Fetch raw data from ADC
+    AD7490_read_all_channels(raw_readings);
+
+    // 2. Normalize data based on calibration
+    line_calibration_get_normalized(raw_readings, norm_frontal, norm_markers);
+
+    // 3. Process Position
+    line_position_update(norm_frontal);
+    
+    // 4. Process Markers
+    // line_markers_update(norm_markers);
+
+    // 5. Aggregate into global struct
+    current_data.position = line_position_get_data();
+    // current_data.markers = line_markers_get_data();
+
+    current_data.is_valid = true; 
 }
+
+line_reading_data_t line_reading_get_data(void) {
+    return current_data;
+}
+
+/* ========================================================================== */
+/* CALIBRATION WORKFLOW                                                       */
+/* ========================================================================== */
 
 void line_reading_calibrate(void) {
     raven_comm_send_message(TAG, "=== LINE CALIBRATION MODE ===");
@@ -77,17 +125,17 @@ void line_reading_calibrate(void) {
     }
 }
 
-void line_reading_normalized_validation(void) {
-    line_calibration_validate_output();
-}
+/* ========================================================================== */
+/* DEBUG & VALIDATION UTILITIES                                               */
+/* ========================================================================== */
 
 void line_reading_raw_validation(void) {
-    uint16_t readings[NUMBER_OF_ACTIVE_CHANNELS] = {0};
+    uint16_t readings[NUMBER_OF_LINE_SENSORS] = {0};
 
     raven_comm_send_message(TAG, "=== STARTING RAW SENSOR VALIDATION ===");
 
     for (uint8_t i = 0; i < 50; i++) {
-        line_reading_get_raw(readings);
+        AD7490_read_all_channels(readings);
 
         raven_comm_send_message(TAG, 
             "Sample [%2d] | L1-0: %4d %4d | S0-S10: %4d %4d %4d %4d %4d %4d %4d %4d %4d %4d %4d | R1-0: %4d %4d",
@@ -101,4 +149,20 @@ void line_reading_raw_validation(void) {
 
         vTaskDelay(pdMS_TO_TICKS(100));
     }
+}
+
+void line_reading_normalized_validation(void) {
+    line_calibration_validate_output();
+}
+
+void line_reading_position_validation(void) {
+    line_reading_update();
+    line_reading_data_t data = line_reading_get_data();
+
+    raven_comm_send_message(TAG, "Line position: %.1f | Lost Flag: %d | On Line: %d", 
+                            data.position.position, 
+                            data.position.robot_lost,
+                            data.position.robot_on_line);
+                            
+    vTaskDelay(pdMS_TO_TICKS(100));
 }

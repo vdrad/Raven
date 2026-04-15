@@ -127,7 +127,7 @@ static void powerup_routine(void) {
         AD7490_CR_WRITE_VALUE, 
         AD7490_CR_SEQ_VALUE, 
         AD7490_CR_SHADOW_VALUE, 
-        NUMBER_OF_ACTIVE_CHANNELS - 1
+        NUMBER_OF_LINE_SENSORS - 1
     );
     write_to_register(command);
 }
@@ -189,19 +189,19 @@ void AD7490_init(void) {
     initialized = true;
 }
 
-void AD7490_read_all_channels(uint16_t array[NUMBER_OF_ACTIVE_CHANNELS]) {
+void AD7490_read_all_channels(uint16_t array[NUMBER_OF_LINE_SENSORS]) {
     if (!initialized) {
         raven_comm_send_message(TAG, "Not initialized!");
         return;
     }
 
-    for (uint8_t i = 0; i < NUMBER_OF_ACTIVE_CHANNELS; i++) {
+    for (uint8_t i = 0; i < NUMBER_OF_LINE_SENSORS; i++) {
         uint8_t channel;
         uint16_t data;
         read_from_sequence(&channel, &data);
         
         // Single-line if statement enforced
-        if (channel < NUMBER_OF_ACTIVE_CHANNELS) array[channel] = data;
+        if (channel < NUMBER_OF_LINE_SENSORS) array[channel] = data;
     }
 }
 
@@ -215,7 +215,7 @@ void AD7490_peripheral_validation(void) {
         char buffer[RAVEN_COMM_MAX_MESSAGE_LEN];
         int offset = snprintf(buffer, sizeof(buffer), "Seq: ");
         
-        for (uint8_t i = 0; i < NUMBER_OF_ACTIVE_CHANNELS; i++) {
+        for (uint8_t i = 0; i < NUMBER_OF_LINE_SENSORS; i++) {
             uint8_t channel;
             uint16_t data; 
             
@@ -251,7 +251,7 @@ void AD7490_benchmark_read(void) {
     for (int i = 0; i < 1000; i++) {
         uint32_t start_cycles = esp_cpu_get_cycle_count();
         
-        for (uint8_t ch = 0; ch < NUMBER_OF_ACTIVE_CHANNELS; ch++) {
+        for (uint8_t ch = 0; ch < NUMBER_OF_LINE_SENSORS; ch++) {
             read_from_sequence(&channel, &data);
         }
         

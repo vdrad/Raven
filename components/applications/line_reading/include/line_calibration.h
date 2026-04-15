@@ -6,7 +6,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "line_reading.h"
+#include "line_configs.h"
 
 /* ========================================================================== */
 /* CONFIGURATIONS & MACROS                                                    */
@@ -64,8 +64,8 @@ void line_calibration_run(calibration_mode_t mode);
  * @param calibrated_line Array of size 11 to be populated with calibrated values.
  * @param calibrated_markers Array of size 4 to be populated with calibrated values.
  */
-void line_calibration_get_normalized(const uint16_t raw_readings[NUMBER_OF_ACTIVE_CHANNELS], 
-                                     uint16_t calibrated_line[NUMBER_OF_LINE_SENSORS], 
+void line_calibration_get_normalized(const uint16_t raw_readings[NUMBER_OF_LINE_SENSORS], 
+                                     uint16_t calibrated_line[NUMBER_OF_FRONTAL_SENSORS], 
                                      uint16_t calibrated_markers[NUMBER_OF_MARKER_SENSORS]);
 
 /**

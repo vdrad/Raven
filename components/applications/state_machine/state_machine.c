@@ -251,7 +251,8 @@ static void *state_test(void *args) {
     // vTaskDelay(pdMS_TO_TICKS(100));
 
     // line_reading_raw_validation();
-    line_reading_normalized_validation();
+    // line_reading_normalized_validation();
+    line_reading_position_validation();
 
     return NULL;
 }
