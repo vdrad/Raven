@@ -30,9 +30,9 @@
 
 // Default Configuration Constants
 #define ICM45686_CALIBRATION_SAMPLES    2000
-#define DEFAULT_ACCEL_ODR               ICM45686_ODR_3200HZ
-#define DEFAULT_ACCEL_FSR               ICM45686_ACCEL_FSR_8G
-#define DEFAULT_GYRO_ODR                ICM45686_ODR_3200HZ
+#define DEFAULT_ACCEL_ODR               ICM45686_ODR_6400HZ
+#define DEFAULT_ACCEL_FSR               ICM45686_ACCEL_FSR_2G
+#define DEFAULT_GYRO_ODR                ICM45686_ODR_6400HZ
 #define DEFAULT_GYRO_FSR                ICM45686_GYRO_FSR_4000DPS
 
 // Register Map Addresess
