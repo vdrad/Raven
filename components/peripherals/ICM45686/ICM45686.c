@@ -396,8 +396,8 @@ void ICM45686_init(void) {
 
     initialized = true;
     RAVEN_LOGI(TAG, "Initialized successfully.");
-    raven_comm_send_message(TAG, "Accelerometer ODR: %d Hz | FSR: %d g", ICM45686_ODR_3200HZ, ICM45686_ACCEL_FSR_8G);
-    raven_comm_send_message(TAG, "Gyroscope ODR: %d Hz | FSR: %d dps",   ICM45686_ODR_3200HZ, ICM45686_GYRO_FSR_4000DPS);
+    raven_comm_send_message(TAG, "Accelerometer ODR: %d Hz | FSR: %d g", DEFAULT_ACCEL_ODR, DEFAULT_ACCEL_FSR);
+    raven_comm_send_message(TAG, "Gyroscope ODR: %d Hz | FSR: %d dps",   DEFAULT_GYRO_ODR,  DEFAULT_GYRO_FSR);
 }
 
 void ICM45686_get_data(icm45686_data_t *out_data) {
