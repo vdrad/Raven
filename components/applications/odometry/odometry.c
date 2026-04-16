@@ -1,6 +1,6 @@
 /**
  * @file odometry.c
- * @brief Procedural Odometry module implementation.
+ * @brief Procedural Odometry module implementation with Sensor Fusion architecture.
  */
 
 #include "odometry.h"
@@ -41,16 +41,55 @@
 #define METERS_PER_PULSE                (WHEEL_CIRCUMFERENCE_M / PULSES_PER_WHEEL_REVOLUTION)
 
 /* ========================================================================== */
+/* PRIVATE DATA STRUCTURES                                                    */
+/* ========================================================================== */
+
+// Intermediate data from the encoders
+typedef struct {
+    float vel_left_m_s;
+    float vel_right_m_s;
+    float vel_center_m_s;
+    float step_dist_m; // Distance traveled in the current dt
+} encoder_odom_t;
+
+// Intermediate data from the IMU
+typedef struct {
+    float yaw_rad;
+    float accel_x;
+    float accel_y;
+} imu_odom_t;
+
+
+/* ========================================================================== */
 /* GLOBAL VARIABLES                                                           */
 /* ========================================================================== */
 
 static bool initialized = false;
+static int64_t last_time_us = 0;
 
 static int last_left_count = 0;
 static int last_right_count = 0;
-static int64_t last_time_us = 0;
 
+// Internal state structs
+static encoder_odom_t raw_enc_data = {0};
+static imu_odom_t raw_imu_data = {0};
+
+// Final fused output
 static odometry_data_t current_odom_data = {0};
+
+/* ========================================================================== */
+/* PRIVATE FUNCTION PROTOTYPES                                                */
+/* ========================================================================== */
+
+static void encoder_odometry_init(void);
+static void imu_odometry_init(void);
+
+static void encoder_odometry_update(float dt_s);
+static void imu_odometry_update(float dt_s);
+static void fuse_odometry(void);
+
+static void encoder_odometry_reset(void);
+static void imu_odometry_reset(void);
 
 /* ========================================================================== */
 /* PUBLIC API IMPLEMENTATIONS                                                 */
@@ -59,70 +98,33 @@ static odometry_data_t current_odom_data = {0};
 void odometry_init(void) {
     if (initialized) return;
 
-    // Safely ensure hardware encoders are spinning before taking baseline
-    encoder_init();
+    encoder_odometry_init();
+    imu_odometry_init();
 
-    // Initialize state variables to prevent huge dt spikes on the first update call
-    encoder_get_count(ENCODER_LEFT, &last_left_count);
-    encoder_get_count(ENCODER_RIGHT, &last_right_count);
     last_time_us = esp_timer_get_time();
-
-    RAVEN_LOGI(TAG, "Initialized in procedural mode.");
     
-    #if USE_EMA_FILTER
-        raven_comm_send_message(TAG, "Using EMA Filter %.1f Alpha", ODOMETRY_EMA_ALPHA);
-    #else
-        raven_comm_send_message(TAG, "Not using EMA Filter");
-    #endif
-    
+    RAVEN_LOGI(TAG, "Initialized Successfully.");
     initialized = true;
 }
 
 void odometry_update(void) {
     if (!initialized) return;
 
-    int left_count = 0;
-    int right_count = 0;
-    encoder_get_count(ENCODER_LEFT, &left_count);
-    encoder_get_count(ENCODER_RIGHT, &right_count);
-
+    // 1. Calculate global unified delta time
     int64_t now_us = esp_timer_get_time();
     float dt_s = (float)(now_us - last_time_us) / 1000000.0f;
 
-    // Prevent division by zero or extremely high frequencies
+    // Prevent division by zero or extreme dt
     if (dt_s <= 0.001f) return;
 
-    // Calculate delta ticks
-    int delta_left  = (int16_t)(left_count - last_left_count);
-    int delta_right = (int16_t)(right_count - last_right_count);
+    // 2. Fetch and process individual sensor data
+    encoder_odometry_update(dt_s);
+    imu_odometry_update(dt_s);
 
-    // Convert to meters
-    float left_dist_m = delta_left * METERS_PER_PULSE;
-    float right_dist_m = delta_right * METERS_PER_PULSE;
+    // 3. Combine them into the final pose
+    fuse_odometry();
 
-    // Calculate Instantaneous Speeds (m/s)
-    float inst_vel_left = left_dist_m / dt_s;
-    float inst_vel_right = right_dist_m / dt_s;
-
-    // Apply EMA filter or raw passing
-    #if USE_EMA_FILTER
-        current_odom_data.velocity_left_m_s = (ODOMETRY_EMA_ALPHA * inst_vel_left) + 
-                                              ((1.0f - ODOMETRY_EMA_ALPHA) * current_odom_data.velocity_left_m_s);
-        current_odom_data.velocity_right_m_s = (ODOMETRY_EMA_ALPHA * inst_vel_right) + 
-                                               ((1.0f - ODOMETRY_EMA_ALPHA) * current_odom_data.velocity_right_m_s);
-    #else
-        current_odom_data.velocity_left_m_s = inst_vel_left;
-        current_odom_data.velocity_right_m_s = inst_vel_right;
-    #endif
-
-    // Center Robot Kinematics
-    current_odom_data.velocity_robot_m_s = (current_odom_data.velocity_left_m_s + current_odom_data.velocity_right_m_s) / 2.0f;
-    float step_dist_m = (left_dist_m + right_dist_m) / 2.0f;
-    current_odom_data.distance_traveled_robot_m += step_dist_m;
-
-    // Save state for the next cycle
-    last_left_count = left_count;
-    last_right_count = right_count;
+    // 4. Save state for next cycle
     last_time_us = now_us;
 }
 
@@ -133,15 +135,95 @@ odometry_data_t odometry_get_data(void) {
 void odometry_reset(void) {
     if (!initialized) return;
 
-    // Reset hardware tick baselines
+    encoder_odometry_reset();
+    imu_odometry_reset();
+
+    current_odom_data = (odometry_data_t){0};
+    last_time_us = esp_timer_get_time();
+}
+
+/* ========================================================================== */
+/* PRIVATE FUNCTION IMPLEMENTATIONS                                           */
+/* ========================================================================== */
+
+static void encoder_odometry_init(void) {
+    encoder_init();
     encoder_get_count(ENCODER_LEFT, &last_left_count);
     encoder_get_count(ENCODER_RIGHT, &last_right_count);
-    
-    // Clear data
-    current_odom_data.distance_traveled_robot_m = 0.0f;
-    current_odom_data.velocity_left_m_s  = 0.0f;
-    current_odom_data.velocity_right_m_s = 0.0f;
-    current_odom_data.velocity_robot_m_s = 0.0f;
 
-    last_time_us = esp_timer_get_time();
+    #if USE_EMA_FILTER
+        raven_comm_send_message(TAG, "Using EMA Filter %.1f Alpha", ODOMETRY_EMA_ALPHA);
+    #else
+        raven_comm_send_message(TAG, "Not using EMA Filter");
+    #endif
+}
+
+static void imu_odometry_init(void) {
+    // TODO: Initialize IMU hardware, calibrate gyro, set baseline yaw
+}
+
+static void encoder_odometry_update(float dt_s) {
+    int left_count = 0, right_count = 0;
+    encoder_get_count(ENCODER_LEFT, &left_count);
+    encoder_get_count(ENCODER_RIGHT, &right_count);
+
+    int delta_left  = (int16_t)(left_count - last_left_count);
+    int delta_right = (int16_t)(right_count - last_right_count);
+
+    float left_dist_m = delta_left * METERS_PER_PULSE;
+    float right_dist_m = delta_right * METERS_PER_PULSE;
+
+    float inst_vel_left = left_dist_m / dt_s;
+    float inst_vel_right = right_dist_m / dt_s;
+
+    #if USE_EMA_FILTER
+        raw_enc_data.vel_left_m_s = (ODOMETRY_EMA_ALPHA * inst_vel_left) + 
+                                    ((1.0f - ODOMETRY_EMA_ALPHA) * raw_enc_data.vel_left_m_s);
+        raw_enc_data.vel_right_m_s = (ODOMETRY_EMA_ALPHA * inst_vel_right) + 
+                                     ((1.0f - ODOMETRY_EMA_ALPHA) * raw_enc_data.vel_right_m_s);
+    #else
+        raw_enc_data.vel_left_m_s = inst_vel_left;
+        raw_enc_data.vel_right_m_s = inst_vel_right;
+    #endif
+
+    raw_enc_data.vel_center_m_s = (raw_enc_data.vel_left_m_s + raw_enc_data.vel_right_m_s) / 2.0f;
+    raw_enc_data.step_dist_m = (left_dist_m + right_dist_m) / 2.0f;
+
+    last_left_count = left_count;
+    last_right_count = right_count;
+}
+
+static void imu_odometry_update(float dt_s) {
+    // TODO: Read IMU registers, apply filtering, update raw_imu_data.yaw_rad
+}
+
+static void fuse_odometry(void) {
+    // 1. Pass through wheel speeds directly from encoder
+    current_odom_data.velocity_left_m_s  = raw_enc_data.vel_left_m_s;
+    current_odom_data.velocity_right_m_s = raw_enc_data.vel_right_m_s;
+    current_odom_data.distance_traveled_robot_m += raw_enc_data.step_dist_m;
+
+    // 2. Determine Yaw (Use IMU if available, otherwise fallback/skip)
+    // NOTE: Once IMU is ready: current_odom_data.yaw_rad = raw_imu_data.yaw_rad;
+
+    // 3. Fuse X, Y Position
+    // Combines the highly accurate 'step distance' from the encoders with the highly 
+    // accurate 'yaw' from the IMU to project the movement onto the global X,Y plane.
+    // current_odom_data.pose_x_m += raw_enc_data.step_dist_m * cosf(current_odom_data.yaw_rad);
+    // current_odom_data.pose_y_m += raw_enc_data.step_dist_m * sinf(current_odom_data.yaw_rad);
+
+    // 4. Fuse Robot Center Velocity
+    // NOTE: Could be pure encoder, pure IMU integral, or a Kalman filter output.
+    current_odom_data.velocity_robot_m_s = raw_enc_data.vel_center_m_s; 
+}
+
+static void encoder_odometry_reset(void) {
+    encoder_get_count(ENCODER_LEFT, &last_left_count);
+    encoder_get_count(ENCODER_RIGHT, &last_right_count);
+    raw_enc_data = (encoder_odom_t){0};
+}
+
+static void imu_odometry_reset(void) {
+    // TODO: Reset IMU yaw baseline
+    raw_imu_data = (imu_odom_t){0};
 }

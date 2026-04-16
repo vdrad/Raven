@@ -12,13 +12,19 @@
 #include <stdbool.h>
 
 /**
- * @brief Structure containing the real-time kinematic data of the robot.
+ * @brief Structure containing the real-time kinematic and pose data of the robot.
  */
 typedef struct {
+    // --- Velocity Data ---
     float velocity_left_m_s;         /**< Current left wheel speed in m/s */
     float velocity_right_m_s;        /**< Current right wheel speed in m/s */
     float velocity_robot_m_s;        /**< Current linear speed of the robot center in m/s */
+    
+    // --- Pose / Position Data ---
     float distance_traveled_robot_m; /**< Absolute distance traveled by the robot in meters */
+    float pose_x_m;                  /**< Global X position in meters */
+    float pose_y_m;                  /**< Global Y position in meters */
+    float yaw_rad;                   /**< Robot heading (yaw) in radians */
 } odometry_data_t;
 
 /**
