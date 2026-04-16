@@ -70,6 +70,8 @@ typedef void *(*state_callback)(void *);
 typedef enum {
     SMA_CMD_UNKNOWN = 0,                        /**< Unrecognized command header. */
     SMA_CMD_ENTER_LINE_CALIBRATION_STATE,       /**< Line Calibration command (Header: 'S', Payload: 'CAL'). */
+    SMA_CMD_ENTER_RACING_STATE,                 /**< Racing command (Header: 'S', Payload: 'RCN'). */
+    SMA_CMD_ENTER_EMERGENCY_STOP_STATE,         /**< Emergency Stop command (Header: 'S', Payload: 'STP'). */
     SMA_CMD_ENTER_TESTING_STATE,                /**< State Machine command (Header: 'S', Payload: 'TST'). */
     SMA_CMD_ENTER_VALIDATION_STATE,             /**< Hardware validation command (Header: 'S', Payload: 'VLD'). */
     SMA_CMD_ENTER_PID_TUNING_STATE,             /**< PID Tuning command (Header: 'S', Payload: 'PID'). */
@@ -81,10 +83,21 @@ typedef enum {
 /* ========================================================================== */
 
 // --- States ---
+
+// Initialization
 ADD_STATE(wait_user_connection);
 ADD_STATE(initialization);
 ADD_STATE(configuration);
 ADD_STATE(line_calibration);
+
+// Core
+ADD_STATE(armed);
+ADD_STATE(countdown);
+ADD_STATE(racing);
+ADD_STATE(cooldown);
+ADD_STATE(emergency_stop);
+
+// Auxiliary
 ADD_STATE(test);
 ADD_STATE(validation);
 ADD_STATE(pid_tuning);
@@ -201,7 +214,7 @@ static void *state_initialization(void *args) {
     line_reading_init();
     ICM45686_init();
 
-    raven_comm_send_message(TAG, "All devices initialized.");
+    raven_comm_send_message(TAG, "All devices initialized.\n");
     REQUEST_STATE(state_configuration);
     return NULL;
 }
@@ -211,8 +224,7 @@ static void *state_initialization(void *args) {
  * @return NULL
  */
 static void *state_configuration(void *args) {
-    // Add configuration logic here
-    vTaskDelay(pdMS_TO_TICKS(500));
+    REQUEST_STATE(state_line_calibration);
     return NULL;
 }
 
@@ -222,7 +234,55 @@ static void *state_configuration(void *args) {
  */
 static void *state_line_calibration(void *args) {
     line_reading_calibrate();
-    REQUEST_STATE(state_configuration);
+    REQUEST_STATE(state_armed);
+    return NULL;
+}
+
+/**
+ * @brief System is configured, calibrated, and waiting for the start signal.
+ * @return NULL
+ */
+static void *state_armed(void *args) {
+    vTaskDelay(pdMS_TO_TICKS(500));
+    return NULL;
+}
+
+/**
+ * @brief Warmup suction fan and start accelerating.
+ * @return NULL
+ */
+static void *state_countdown(void *args) {
+    vTaskDelay(pdMS_TO_TICKS(500));
+    REQUEST_STATE(state_racing);
+    return NULL;
+}
+
+/**
+ * @brief The main PID control loop is driving the robot.
+ * @return NULL
+ */
+static void *state_racing(void *args) {
+    vTaskDelay(pdMS_TO_TICKS(500));
+    REQUEST_STATE(state_cooldown);
+    return NULL;
+}
+
+/**
+ * @brief Race is finished, the robot is progressively decelerating untill full stop.
+ * @return NULL
+ */
+static void *state_cooldown(void *args) {
+    vTaskDelay(pdMS_TO_TICKS(500));
+    REQUEST_STATE(state_emergency_stop);
+    return NULL;
+}
+
+/**
+ * @brief The user requested immediate stop or a failsafe condition was detected.
+ * @return NULL
+ */
+static void *state_emergency_stop(void *args) {
+    vTaskDelay(pdMS_TO_TICKS(500));
     return NULL;
 }
 
@@ -311,8 +371,7 @@ static void apply_pending_state_transition(void) {
     state_machine.has_pending_request = false;
     taskEXIT_CRITICAL(&state_spinlock);
 
-    // 3. Imprime com segurança (com interrupções ativadas)
-    RAVEN_LOGI(TAG, "Transition: [%s] -> [%s]", old_state, new_state);
+    raven_comm_send_message(TAG, "Transition: [%s] -> [%s]", old_state, new_state);
 }
 
 /**
@@ -322,6 +381,8 @@ static void apply_pending_state_transition(void) {
  */
 static state_machine_cmd_type_t command_decoder(char *payload) {
     if (strcmp(payload, "CAL") == 0) return SMA_CMD_ENTER_LINE_CALIBRATION_STATE;
+    if (strcmp(payload, "RCN") == 0) return SMA_CMD_ENTER_RACING_STATE;
+    if (strcmp(payload, "STP") == 0) return SMA_CMD_ENTER_EMERGENCY_STOP_STATE;
     if (strcmp(payload, "TST") == 0) return SMA_CMD_ENTER_TESTING_STATE;
     if (strcmp(payload, "VLD") == 0) return SMA_CMD_ENTER_VALIDATION_STATE;
     if (strcmp(payload, "PID") == 0) return SMA_CMD_ENTER_PID_TUNING_STATE;
@@ -377,6 +438,13 @@ static void state_machine_commands_task(void *pvParameters) {
                     break;
                 case SMA_CMD_ENTER_LINE_CALIBRATION_STATE:
                     REQUEST_STATE(state_line_calibration);
+                    break;
+                case SMA_CMD_ENTER_RACING_STATE:
+                    if (state_machine.cb == state_armed) REQUEST_STATE(state_countdown);
+                    else raven_comm_send_message(TAG, "Command Rejected: Robot is not ARMED.");
+                    break;
+                case SMA_CMD_ENTER_EMERGENCY_STOP_STATE:
+                    REQUEST_STATE(state_emergency_stop);
                     break;
 
                 default:
