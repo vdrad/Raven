@@ -10,6 +10,7 @@
 
 // Project Includes
 #include "line_calibration.h" 
+#include "buzzer.h"
 
 #define TAG "LIN"
 
@@ -26,6 +27,9 @@
  */
 // #define LINE_MARKERS_REQUIRE_ALL
 #define LINE_MARKERS_REQUIRE_ANY
+
+#define LINE_MARKERS_DETECTION_NOTE_FREQUENCY     NOTE_B7
+#define LINE_MARKERS_DETECTION_NOTE_DURATION_MS   120
 
 /* ========================================================================== */
 /* PRIVATE VARIABLES                                                          */
@@ -101,6 +105,10 @@ void line_markers_update(uint16_t normalized_readings[NUMBER_OF_MARKER_SENSORS])
         // Tally the score based on the highest state achieved during the pass
         if (peak_active_marker == LINE_MARKER_LEFT) {
             current_data.left_markers_counter++;
+            buzzer_play(
+                LINE_MARKERS_DETECTION_NOTE_FREQUENCY, 
+                LINE_MARKERS_DETECTION_NOTE_DURATION_MS
+            );
         } 
         else if (peak_active_marker == LINE_MARKER_RIGHT) {
             current_data.right_markers_counter++;
