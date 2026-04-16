@@ -21,6 +21,7 @@
 // Project Includes
 #include "raven_log.h"
 #include "raven_comm.h"
+#include "notifications.h" 
 #include "AD7490.h"
 
 #define TAG "CAL" 
@@ -41,6 +42,35 @@ static const uint8_t LINE_INDEX_MAP[NUMBER_OF_FRONTAL_SENSORS] = {
 /** @brief Mapping for internal iteration of marker sensors. */
 static const uint8_t MARKER_INDEX_MAP[NUMBER_OF_MARKER_SENSORS] = {
     LM0, LM1, RM1, RM0
+};
+
+// --- UX Profile Definitions ---
+static const notification_config_t NOTIFY_PROFILE_CALIB_MANUAL = {
+    NOTIFY_PATTERN_BLINK_EDGES, 
+    COLOR_PURPLE, 
+    0, 
+    1000, 
+    NOTIFY_INFINITE, 
+    false,
+    0
+};
+static const notification_config_t NOTIFY_PROFILE_CALIB_SAVE_NVS = {
+    NOTIFY_PATTERN_SWEEP_TO_EDGES, 
+    COLOR_PURPLE, 
+    NOTE_C5, 
+    25, 
+    1, 
+    false,
+    0
+};
+static const notification_config_t NOTIFY_PROFILE_CALIB_LOAD_NVS = {
+    NOTIFY_PATTERN_SWEEP_TO_CENTER,
+    COLOR_PURPLE, 
+    NOTE_C5, 
+    20, 
+    1, 
+    false,
+    0
 };
 
 /* ========================================================================== */
@@ -192,6 +222,7 @@ void line_calibration_run(calibration_mode_t mode) {
 
     if (mode == CALIB_MODE_LOAD_FROM_NVS) {
         if (load_from_nvs() == ESP_OK) {
+            notification_play(&NOTIFY_PROFILE_CALIB_LOAD_NVS);
             send_calibration_report();
             return;
         }
@@ -199,6 +230,7 @@ void line_calibration_run(calibration_mode_t mode) {
         mode = CALIB_MODE_MANUAL_NO_SAVE;
     }
 
+    notification_play(&NOTIFY_PROFILE_CALIB_MANUAL);
     raven_comm_send_message(TAG, "Starting manual calibration. Sweep the robot across the line for %d ms.", CALIBRATION_DURATION_MS);
 
     // Reset values for new calibration
@@ -221,9 +253,13 @@ void line_calibration_run(calibration_mode_t mode) {
         vTaskDelay(pdMS_TO_TICKS(20)); // Yield to FreeRTOS watchdog
     }
 
+    notification_play(&NOTIFY_PROFILE_OFF);
     send_calibration_report();
 
-    if (mode == CALIB_MODE_MANUAL_SAVE_NVS) save_to_nvs();
+    if (mode == CALIB_MODE_MANUAL_SAVE_NVS) {
+        notification_play(&NOTIFY_PROFILE_CALIB_SAVE_NVS);
+        save_to_nvs();
+    }
 }
 
 void line_calibration_get_normalized(const uint16_t raw_readings[NUMBER_OF_LINE_SENSORS], 

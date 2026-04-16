@@ -22,6 +22,7 @@ typedef enum {
     NOTIFY_PATTERN_SWEEP_TO_EDGES,     // Center bursts to outer wings
     NOTIFY_PATTERN_BLINK_EDGES,        // Blinks outermost LEDs
     NOTIFY_PATTERN_BLINK_EXHAUSTS,     // Blinks exhaust LEDs
+    NOTIFY_PATTERN_GAUGE,              // Progress bar
     NOTIFY_PATTERN_SOLID_ALL           // All LEDs solid (utility)
 } notification_pattern_t;
 
@@ -35,7 +36,10 @@ typedef struct {
     uint16_t speed_ms;
     int32_t repetitions;
     bool freeze_at_end;                /**< If true, LEDs remain in their final state instead of turning off */
+    uint8_t payload;                   /**< Generic parameter */
 } notification_config_t;
+
+extern const notification_config_t NOTIFY_PROFILE_OFF;
 
 /**
  * @brief Initializes the background notification task.

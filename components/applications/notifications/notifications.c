@@ -31,13 +31,14 @@ static notification_config_t active_request = {
 static portMUX_TYPE notify_spinlock = portMUX_INITIALIZER_UNLOCKED;
 
 // --- UX Profile Definitions ---
-static const notification_config_t NOTIFY_PROFILE_OFF = {
+const notification_config_t NOTIFY_PROFILE_OFF = {
     NOTIFY_PATTERN_OFF, 
     {0,0,0}, 
     0, 
     100, 
     NOTIFY_INFINITE, 
-    false
+    false,
+    0
 };
 
 // const notification_config_t NOTIFY_PROFILE_WAKEUP = {
@@ -250,6 +251,32 @@ static void notifications_task(void *pvParameters) {
                 rgb_led_show();
                 if (req.base_tone_hz > 0) buzzer_play(req.base_tone_hz, req.speed_ms); 
                 vTaskDelay(pdMS_TO_TICKS(req.speed_ms));
+                break;
+            }
+
+            case NOTIFY_PATTERN_GAUGE: {
+                rgb_led_clear();
+                
+                // Cap the payload to 9 to prevent out-of-bounds array access
+                uint8_t target = (req.payload <= 9) ? req.payload : 9;
+                
+                // Animate filling from the center (indexes 9 and 10) outwards
+                for (int step = 0; step < target; step++) {
+                    rgb_led_set_color(led_map[9 - step], req.color);
+                    rgb_led_set_color(led_map[10 + step], req.color);
+                    rgb_led_show();
+                    
+                    if (req.base_tone_hz > 0) {
+                        // Pitch bends up slightly as the gauge fills!
+                        buzzer_play(req.base_tone_hz + (step * 20), 20); 
+                    }
+                    vTaskDelay(pdMS_TO_TICKS(req.speed_ms));
+                }
+                
+                // Hold the gauge on screen so the user can read the level
+                vTaskDelay(pdMS_TO_TICKS(1500)); 
+                
+                if(!req.freeze_at_end) { rgb_led_clear(); rgb_led_show(); }
                 break;
             }
 
