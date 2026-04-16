@@ -77,6 +77,34 @@ typedef enum {
     SMA_CMD_ENTER_MOTOR_CHARACTERIZATION_STATE  /**< Motor Characterization command (Header: 'S', Payload: 'MCR'). */
 } state_machine_cmd_type_t;
 
+static const notification_config_t NOTIFY_PROFILE_ARMED_STATE = {
+    NOTIFY_PATTERN_BREATHER, 
+    COLOR_PURPLE, 
+    NOTE_REST, 
+    70, 
+    1, 
+    false,
+    0
+};
+static const notification_config_t NOTIFY_PROFILE_COUNTDOWN_STATE_BEGINNING = {
+    NOTIFY_PATTERN_SWEEP_TO_EDGES, 
+    COLOR_PURPLE, 
+    NOTE_C6, 
+    50, 
+    1, 
+    false,
+    0
+};
+static const notification_config_t NOTIFY_PROFILE_COUNTDOWN_STATE_ENDING = {
+    NOTIFY_PATTERN_BLINK_EDGES, 
+    COLOR_PURPLE, 
+    NOTE_A7, 
+    80, 
+    1, 
+    true,
+    0
+};
+
 /* ========================================================================== */
 /* FORWARD DECLARATIONS                                                       */
 /* ========================================================================== */
@@ -232,6 +260,7 @@ static void *state_configuration(void *args) {
  */
 static void *state_line_calibration(void *args) {
     line_reading_calibrate();
+    vTaskDelay(pdMS_TO_TICKS(800)); // Give time to notifications
     REQUEST_STATE(state_armed);
     return NULL;
 }
@@ -241,6 +270,7 @@ static void *state_line_calibration(void *args) {
  * @return NULL
  */
 static void *state_armed(void *args) {
+    notification_play(&NOTIFY_PROFILE_ARMED_STATE);
     vTaskDelay(pdMS_TO_TICKS(500));
     return NULL;
 }
@@ -250,6 +280,10 @@ static void *state_armed(void *args) {
  * @return NULL
  */
 static void *state_countdown(void *args) {
+    notification_play(&NOTIFY_PROFILE_COUNTDOWN_STATE_BEGINNING);
+    vTaskDelay(pdMS_TO_TICKS(500));
+
+    notification_play(&NOTIFY_PROFILE_COUNTDOWN_STATE_ENDING);
     vTaskDelay(pdMS_TO_TICKS(500));
     REQUEST_STATE(state_racing);
     return NULL;

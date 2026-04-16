@@ -232,6 +232,13 @@ static void notifications_task(void *pvParameters) {
                 rgb_led_show();
                 if (req.base_tone_hz > 0) buzzer_play(req.base_tone_hz, req.speed_ms); 
                 vTaskDelay(pdMS_TO_TICKS(req.speed_ms));
+                
+                if(req.freeze_at_end) {
+                    rgb_led_set_color(led_map[1], req.color); 
+                    rgb_led_set_color(led_map[18], req.color); 
+                    rgb_led_show();
+                }
+                
                 break;
             }
 
@@ -251,6 +258,13 @@ static void notifications_task(void *pvParameters) {
                 rgb_led_show();
                 if (req.base_tone_hz > 0) buzzer_play(req.base_tone_hz, req.speed_ms); 
                 vTaskDelay(pdMS_TO_TICKS(req.speed_ms));
+                
+                if(req.freeze_at_end) {
+                    rgb_led_set_color(led_map[0], req.color); 
+                    rgb_led_set_color(led_map[19], req.color); 
+                    rgb_led_show();
+                }
+                
                 break;
             }
 
