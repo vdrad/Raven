@@ -20,7 +20,8 @@ typedef enum {
     NOTIFY_PATTERN_EXHAUSTS_SPOOL,     // Flickers exhausts, turns solid, rising pitch
     NOTIFY_PATTERN_SWEEP_TO_CENTER,    // Outer wings collapse to center
     NOTIFY_PATTERN_SWEEP_TO_EDGES,     // Center bursts to outer wings
-    NOTIFY_PATTERN_BLINK_EDGES,      // Alternating hazard blink on outermost LEDs
+    NOTIFY_PATTERN_BLINK_EDGES,        // Blinks outermost LEDs
+    NOTIFY_PATTERN_BLINK_EXHAUSTS,     // Blinks exhaust LEDs
     NOTIFY_PATTERN_SOLID_ALL           // All LEDs solid (utility)
 } notification_pattern_t;
 
@@ -35,14 +36,6 @@ typedef struct {
     int32_t repetitions;
     bool freeze_at_end;                /**< If true, LEDs remain in their final state instead of turning off */
 } notification_config_t;
-
-// --- Pre-defined UX Profiles (Declare here, define in .c) ---
-extern const notification_config_t NOTIFY_PROFILE_OFF;
-extern const notification_config_t NOTIFY_PROFILE_WAKEUP;
-extern const notification_config_t NOTIFY_PROFILE_WAIT_CONN;
-extern const notification_config_t NOTIFY_PROFILE_ARMED;
-extern const notification_config_t NOTIFY_PROFILE_CALIBRATING;
-extern const notification_config_t NOTIFY_PROFILE_FAILSAFE;
 
 /**
  * @brief Initializes the background notification task.

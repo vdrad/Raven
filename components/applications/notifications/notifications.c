@@ -31,14 +31,14 @@ static notification_config_t active_request = {
 static portMUX_TYPE notify_spinlock = portMUX_INITIALIZER_UNLOCKED;
 
 // --- UX Profile Definitions ---
-// const notification_config_t NOTIFY_PROFILE_OFF = {
-//     NOTIFY_PATTERN_OFF, 
-//     {0,0,0}, 
-//     0, 
-//     100, 
-//     NOTIFY_INFINITE, 
-//     false
-// };
+static const notification_config_t NOTIFY_PROFILE_OFF = {
+    NOTIFY_PATTERN_OFF, 
+    {0,0,0}, 
+    0, 
+    100, 
+    NOTIFY_INFINITE, 
+    false
+};
 
 // const notification_config_t NOTIFY_PROFILE_WAKEUP = {
 //     NOTIFY_PATTERN_SWEEP_TO_EDGES, 
@@ -223,13 +223,32 @@ static void notifications_task(void *pvParameters) {
                 rgb_led_set_color(led_map[1], req.color); 
                 rgb_led_set_color(led_map[18], req.color); 
                 rgb_led_show();
-                if (req.base_tone_hz > 0) buzzer_play(req.base_tone_hz * 2, 100); 
+                if (req.base_tone_hz > 0) buzzer_play(req.base_tone_hz * 2, req.speed_ms); 
                 vTaskDelay(pdMS_TO_TICKS(req.speed_ms));
 
                 // State B: Both Outermost OFF
                 rgb_led_clear();
                 rgb_led_show();
-                if (req.base_tone_hz > 0) buzzer_play(req.base_tone_hz, 100); 
+                if (req.base_tone_hz > 0) buzzer_play(req.base_tone_hz, req.speed_ms); 
+                vTaskDelay(pdMS_TO_TICKS(req.speed_ms));
+                break;
+            }
+
+            case NOTIFY_PATTERN_BLINK_EXHAUSTS: {
+                // Exhausts LEDs only (Index 0 and 19)
+                
+                // State A: Both Exhausts ON
+                rgb_led_clear();
+                rgb_led_set_color(led_map[0], req.color); 
+                rgb_led_set_color(led_map[19], req.color); 
+                rgb_led_show();
+                if (req.base_tone_hz > 0) buzzer_play(req.base_tone_hz * 2, req.speed_ms); 
+                vTaskDelay(pdMS_TO_TICKS(req.speed_ms));
+
+                // State B: Both Exhausts OFF
+                rgb_led_clear();
+                rgb_led_show();
+                if (req.base_tone_hz > 0) buzzer_play(req.base_tone_hz, req.speed_ms); 
                 vTaskDelay(pdMS_TO_TICKS(req.speed_ms));
                 break;
             }

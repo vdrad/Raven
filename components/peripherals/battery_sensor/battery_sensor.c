@@ -23,6 +23,7 @@
 #include "pinout.h"
 #include "raven_log.h"
 #include "raven_comm.h"
+#include "notifications.h"
 
 /* ========================================================================== */
 /* MACROS & CONSTANTS                                                         */
@@ -30,7 +31,7 @@
 
 #define TAG "BAT"
     
-#define BATTERY_MONITORING_USB_VOLTAGE  3.0f
+#define BATTERY_MONITORING_USB_VOLTAGE     3.0f
 
 #define BATTERY_SENSOR_SAMPLES_PER_READING 2
 #define BATTERY_SENSOR_VOLTAGE_POINT       12.36f
@@ -59,6 +60,40 @@ static adc_channel_t adc_channel;
 static int raw_reading = 0;
 static float voltage_reading = 0.0f;
 static battery_status_t battery_status = POWERED_BY_USB;
+
+// --- UX Profile Definitions ---
+static const notification_config_t NOTIFY_BATTERY_HIGH = {
+    NOTIFY_PATTERN_SWEEP_TO_EDGES, 
+    COLOR_GREEN, 
+    NOTE_E5, 
+    50, 
+    1, 
+    false
+};
+static const notification_config_t NOTIFY_BATTERY_MEDIUM = {
+    NOTIFY_PATTERN_SWEEP_TO_EDGES, 
+    COLOR_DARK_ORANGE, 
+    NOTE_C4, 
+    75, 
+    1, 
+    false
+};
+static const notification_config_t NOTIFY_BATTERY_LOW = {
+    NOTIFY_PATTERN_BLINK_EDGES, 
+    COLOR_RED, 
+    NOTE_A3, 
+    150, 
+    3, 
+    false
+};
+static const notification_config_t NOTIFY_POWERED_BY_USB = {
+    NOTIFY_PATTERN_SWEEP_TO_EDGES, 
+    COLOR_CYAN, 
+    NOTE_C6, 
+    70, 
+    1, 
+    false
+};
 
 /* ========================================================================== */
 /* FREE RTOS TASKS                                                            */
@@ -101,6 +136,26 @@ static void battery_sensor_task(void *pvParameters) {
     }
 }
 
+static void notify_battery_level(void) {
+    switch (battery_status) {
+        case BATTERY_HIGH:
+            notification_play(&NOTIFY_BATTERY_HIGH);
+            break;
+            case BATTERY_MEDIUM:
+            notification_play(&NOTIFY_BATTERY_MEDIUM);
+            break;
+            case BATTERY_LOW:
+            notification_play(&NOTIFY_BATTERY_LOW);
+            break;
+            case POWERED_BY_USB:
+            notification_play(&NOTIFY_POWERED_BY_USB);
+            break;
+
+        default:
+            break;
+    }
+}
+
 /* ========================================================================== */
 /* PUBLIC API                                                                 */
 /* ========================================================================== */
@@ -133,6 +188,7 @@ void battery_sensor_init(void) {
 
     RAVEN_LOGI(TAG, "Initialized successfully.");
     raven_comm_send_message(TAG, "Battery Voltage: %.1fV", voltage_reading);
+    notify_battery_level();
     initialized = true;
 }
 

@@ -307,13 +307,14 @@ static void *state_test(void *args) {
     // odometry_data_t data = odometry_get_data();
     // RAVEN_LOGI("TST", "%.2fm", data.distance_traveled_robot_m);
     // vTaskDelay(pdMS_TO_TICKS(100));
-
+    
     // line_reading_raw_validation();
     // line_reading_normalized_validation();
     // line_reading_position_validation();
     // line_reading_markers_validation();
-
-    notifications_validation();
+    
+    // notifications_validation();
+    vTaskDelay(pdMS_TO_TICKS(100));
 
     return NULL;
 }
