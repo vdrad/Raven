@@ -104,6 +104,24 @@ static const notification_config_t NOTIFY_PROFILE_COUNTDOWN_STATE_ENDING = {
     true,
     0
 };
+static const notification_config_t NOTIFY_PROFILE_COOLDOWN_STATE = {
+    NOTIFY_PATTERN_BLINK_EDGES, 
+    COLOR_RED, 
+    NOTE_REST, 
+    100, 
+    1, 
+    true,
+    0
+};
+static const notification_config_t NOTIFY_PROFILE_EMERGENCY_STOP_STATE = {
+    NOTIFY_PATTERN_BLINK_EXHAUSTS, 
+    COLOR_RED, 
+    NOTE_REST, 
+    100, 
+    1, 
+    true,
+    0
+};
 
 /* ========================================================================== */
 /* FORWARD DECLARATIONS                                                       */
@@ -304,6 +322,7 @@ static void *state_racing(void *args) {
  * @return NULL
  */
 static void *state_cooldown(void *args) {
+    notification_play(&NOTIFY_PROFILE_COOLDOWN_STATE);
     vTaskDelay(pdMS_TO_TICKS(500));
     REQUEST_STATE(state_emergency_stop);
     return NULL;
@@ -314,6 +333,7 @@ static void *state_cooldown(void *args) {
  * @return NULL
  */
 static void *state_emergency_stop(void *args) {
+    notification_play(&NOTIFY_PROFILE_EMERGENCY_STOP_STATE);
     vTaskDelay(pdMS_TO_TICKS(500));
     return NULL;
 }
