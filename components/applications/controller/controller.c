@@ -84,7 +84,7 @@ void controller_init(void) {
                             left_motor_pid.kP, left_motor_pid.kI, left_motor_pid.kD);
 }
 
-void controller_motors_run(void) {
+void controller_motors_run_tuning(void) {
     // 1. Update sensors once
     odometry_update();
     odometry_data_t odom = odometry_get_data();

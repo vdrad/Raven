@@ -237,7 +237,7 @@ void controller_run_generic_tuner(pid_context_t **target_pids, uint8_t num_pids,
  * No parameters needed; it knows which globals to interact with.
  */
 static void dual_motor_update_cb(void) {
-    controller_motors_run();
+    controller_motors_run_tuning();
 }
 
 /**

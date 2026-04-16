@@ -32,7 +32,7 @@ void controller_init(void);
 /**
  * @brief Main execution function to update sensors and calculate motor responses.
  */
-void controller_motors_run(void);
+void controller_motors_run_tuning(void);
 
 /* =========================================================================
  * TUNER API
