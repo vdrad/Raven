@@ -63,20 +63,22 @@ static battery_status_t battery_status = POWERED_BY_USB;
 
 // --- UX Profile Definitions ---
 static const notification_config_t NOTIFY_BATTERY_HIGH = {
-    NOTIFY_PATTERN_SWEEP_TO_EDGES, 
-    COLOR_GREEN, 
-    NOTE_E5, 
+    NOTIFY_PATTERN_GAUGE, 
+    COLOR_PURPLE, 
+    NOTE_REST, 
     50, 
     1, 
-    false
+    false,
+    9
 };
 static const notification_config_t NOTIFY_BATTERY_MEDIUM = {
-    NOTIFY_PATTERN_SWEEP_TO_EDGES, 
-    COLOR_DARK_ORANGE, 
-    NOTE_C4, 
+    NOTIFY_PATTERN_GAUGE, 
+    COLOR_PURPLE, 
+    NOTE_REST, 
     75, 
     1, 
-    false
+    false,
+    5
 };
 static const notification_config_t NOTIFY_BATTERY_LOW = {
     NOTIFY_PATTERN_BLINK_EDGES, 
@@ -84,15 +86,17 @@ static const notification_config_t NOTIFY_BATTERY_LOW = {
     NOTE_A3, 
     150, 
     3, 
-    false
+    false,
+    3
 };
 static const notification_config_t NOTIFY_POWERED_BY_USB = {
-    NOTIFY_PATTERN_SWEEP_TO_EDGES, 
-    COLOR_CYAN, 
-    NOTE_C6, 
-    70, 
+    NOTIFY_PATTERN_GAUGE, 
+    COLOR_PURPLE, 
+    NOTE_REST, 
+    50, 
     1, 
-    false
+    false,
+    9
 };
 
 /* ========================================================================== */
