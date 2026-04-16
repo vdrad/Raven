@@ -9,6 +9,7 @@
 #pragma once
 
 #include <stdint.h>
+#include "colors.h"
 
 /**
  * @brief Initializes the RMT peripheral and configures the LED strip.
@@ -17,20 +18,16 @@ void rgb_led_init(void);
 
 /**
  * @brief Sets a specific LED to a given RGB value in the RAM buffer.
- * * @param index The physical index of the LED to change.
- * @param red   Red brightness (0-255).
- * @param green Green brightness (0-255).
- * @param blue  Blue brightness (0-255).
+ * @param index The physical index of the LED to change.
+ * @param color The rgb_color_t struct containing the target color.
  */
-void rgb_led_set_color(uint8_t index, uint8_t red, uint8_t green, uint8_t blue);
+void rgb_led_set_color(uint8_t index, rgb_color_t color);
 
 /**
  * @brief Sets all LEDs to the same RGB value in the RAM buffer.
- * * @param red   Red brightness (0-255).
- * @param green Green brightness (0-255).
- * @param blue  Blue brightness (0-255).
+ * @param color The rgb_color_t struct containing the target color.
  */
-void rgb_led_set_all_colors(uint8_t red, uint8_t green, uint8_t blue);
+void rgb_led_set_all_colors(rgb_color_t color);
 
 /**
  * @brief Clears the RAM buffer (sets all LEDs to black/off).

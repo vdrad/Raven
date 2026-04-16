@@ -25,14 +25,13 @@
 #include "raven_comm.h"
 #include "ble_manager.h"
 #include "peripheral_validation.h"
-#include "rgb_led.h"
-#include "buzzer.h"
 #include "battery_sensor.h"
 #include "ICM45686.h"
 #include "motor.h"
 #include "odometry.h"
 #include "controller.h"
 #include "line_reading.h"
+#include "notifications.h"
 
 #define TAG "SMA"
 
@@ -205,8 +204,7 @@ static void *state_wait_user_connection(void *args) {
  * @return NULL
  */
 static void *state_initialization(void *args) {
-    rgb_led_init();
-    buzzer_init();
+    notifications_init();
     battery_sensor_init();
     motor_init();
     odometry_init();
@@ -313,7 +311,9 @@ static void *state_test(void *args) {
     // line_reading_raw_validation();
     // line_reading_normalized_validation();
     // line_reading_position_validation();
-    line_reading_markers_validation();
+    // line_reading_markers_validation();
+
+    notifications_validation();
 
     return NULL;
 }

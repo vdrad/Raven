@@ -1,7 +1,8 @@
 /**
  * @file rgb_led.c
  * @brief Addressable RGB LED (WS2812/Neopixel) driver using the ESP32 RMT peripheral.
- * * This module manages a string of addressable LEDs using hardware acceleration (RMT).
+ *
+ * This module manages a string of addressable LEDs using hardware acceleration (RMT).
  * It separates the memory update operations (fast) from the physical transmission (slow)
  * to prevent CPU blocking/overhang times.
  */
@@ -74,20 +75,20 @@ void rgb_led_init(void) {
     RAVEN_LOGI(TAG, "Initialized successfully.");
 }
 
-void rgb_led_set_color(uint8_t index, uint8_t red, uint8_t green, uint8_t blue) {
+void rgb_led_set_color(uint8_t index, rgb_color_t color) {
     if (index >= NUMBER_OF_LEDS) return;
 
     // Map to GRB format expected by WS2812
-    led_pixels[index * 3 + 0] = green;
-    led_pixels[index * 3 + 1] = red;
-    led_pixels[index * 3 + 2] = blue;
+    led_pixels[index * 3 + 0] = color.g;
+    led_pixels[index * 3 + 1] = color.r;
+    led_pixels[index * 3 + 2] = color.b;
 }
 
-void rgb_led_set_all_colors(uint8_t red, uint8_t green, uint8_t blue) {
+void rgb_led_set_all_colors(rgb_color_t color) {
     for (uint8_t i = 0; i < NUMBER_OF_LEDS; i++) {
-        led_pixels[i * 3 + 0] = green;
-        led_pixels[i * 3 + 1] = red;
-        led_pixels[i * 3 + 2] = blue; 
+        led_pixels[i * 3 + 0] = color.g;
+        led_pixels[i * 3 + 1] = color.r;
+        led_pixels[i * 3 + 2] = color.b; 
     }
 }
 
