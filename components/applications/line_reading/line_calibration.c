@@ -58,7 +58,7 @@ static const notification_config_t NOTIFY_PROFILE_CALIB_SAVE_NVS = {
     NOTIFY_PATTERN_SWEEP_TO_EDGES, 
     COLOR_PURPLE, 
     NOTE_C5, 
-    25, 
+    50, 
     1, 
     false,
     0
@@ -67,7 +67,7 @@ static const notification_config_t NOTIFY_PROFILE_CALIB_LOAD_NVS = {
     NOTIFY_PATTERN_SWEEP_TO_CENTER,
     COLOR_PURPLE, 
     NOTE_C5, 
-    20, 
+    40, 
     1, 
     false,
     0
