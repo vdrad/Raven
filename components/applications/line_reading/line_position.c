@@ -16,7 +16,7 @@
 #include "esp_timer.h"
 
 // Project Includes
-#include "line_reading.h"
+#include "line_configs.h"
 #include "line_calibration.h"
 
 #define TAG "LIN"
@@ -28,13 +28,13 @@
 /** * @brief Minimum normalized reading to consider the robot is over the line.
  * Tune: Choose a value safely between track noise and a weak line edge reading. 
  */
-#define LINE_POSITION_ON_LINE_THRESHOLD     ((uint16_t)round(0.30f  * CALIBRATION_MAX_VALUE))
+#define LINE_POSITION_ON_LINE_THRESHOLD     ((uint16_t)round(0.30f  * LINE_CALIBRATION_MAX_VALUE))
 
 /** * @brief Minimum normalized reading to be considered valid signal.
  * Tune: Read normalized values when all sensors are on the track surface (no line). 
  * Choose a value slightly above the maximum observed noise.
  */
-#define LINE_POSITION_NOISE_THRESHOLD       ((uint16_t)round(0.065f * CALIBRATION_MAX_VALUE))
+#define LINE_POSITION_NOISE_THRESHOLD       ((uint16_t)round(0.065f * LINE_CALIBRATION_MAX_VALUE))
 
 #define LINE_POSITION_CENTRAL_SENSOR_INDEX  5
 #define LINE_POSITION_SENSOR_SPACING_MM     6.4f

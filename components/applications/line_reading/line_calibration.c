@@ -48,7 +48,7 @@ static const uint8_t MARKER_INDEX_MAP[NUMBER_OF_MARKER_SENSORS] = {
 /* ========================================================================== */
 
 /**
- * @brief Normalizes raw value to [0, CALIBRATION_MAX_VALUE] based on LINE_COLOR.
+ * @brief Normalizes raw value to [0, LINE_CALIBRATION_MAX_VALUE] based on LINE_COLOR.
  */
 static inline uint16_t normalize_and_clamp(uint16_t raw, uint16_t min, uint16_t max) {
     uint16_t range = max - min;
@@ -56,18 +56,18 @@ static inline uint16_t normalize_and_clamp(uint16_t raw, uint16_t min, uint16_t 
     // Protection against division by zero (uncalibrated sensor)
     if (range == 0) return 0;
 
-    // Linear mapping: min -> 0, max -> CALIBRATION_MAX_VALUE
-    int32_t cal_value = ((int32_t)(raw - min) * CALIBRATION_MAX_VALUE) / range;
+    // Linear mapping: min -> 0, max -> LINE_CALIBRATION_MAX_VALUE
+    int32_t cal_value = ((int32_t)(raw - min) * LINE_CALIBRATION_MAX_VALUE) / range;
 
-    // Clamping to [0, CALIBRATION_MAX_VALUE]
+    // Clamping to [0, LINE_CALIBRATION_MAX_VALUE]
     if (cal_value < 0) cal_value = 0;
-    if (cal_value > CALIBRATION_MAX_VALUE) cal_value = CALIBRATION_MAX_VALUE;
+    if (cal_value > LINE_CALIBRATION_MAX_VALUE) cal_value = LINE_CALIBRATION_MAX_VALUE;
 
     /**
      * If WHITE_LINE: The whitest part (min ADC) must be the MAX_VALUE (100% Line).
      * If BLACK_LINE: The blackest part (max ADC) must be the MAX_VALUE.
      */
-    if (LINE_COLOR == WHITE_LINE) return (uint16_t)(CALIBRATION_MAX_VALUE - cal_value);
+    if (LINE_COLOR == WHITE_LINE) return (uint16_t)(LINE_CALIBRATION_MAX_VALUE - cal_value);
     else return (uint16_t)cal_value;
 }
 
@@ -181,7 +181,7 @@ void line_calibration_init(void) {
 
     initialized = true;
     RAVEN_LOGI(TAG, "Calibration module initialized.");
-    raven_comm_send_message(TAG, "Normalized value range: 0-%d", CALIBRATION_MAX_VALUE);
+    raven_comm_send_message(TAG, "Normalized value range: 0-%d", LINE_CALIBRATION_MAX_VALUE);
 }
 
 void line_calibration_run(calibration_mode_t mode) {

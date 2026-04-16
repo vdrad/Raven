@@ -20,6 +20,7 @@
 #include "line_commands.h"
 #include "line_calibration.h"
 #include "line_position.h"
+#include "line_markers.h"
 
 #define TAG "LIN"
 
@@ -81,11 +82,11 @@ void line_reading_update(void) {
     line_position_update(norm_frontal);
     
     // 4. Process Markers
-    // line_markers_update(norm_markers);
+    line_markers_update(norm_markers);
 
     // 5. Aggregate into global struct
     current_data.position = line_position_get_data();
-    // current_data.markers = line_markers_get_data();
+    current_data.markers = line_markers_get_data();
 
     current_data.is_valid = true; 
 }
@@ -163,6 +164,19 @@ void line_reading_position_validation(void) {
                             data.position.position, 
                             data.position.robot_lost,
                             data.position.robot_on_line);
+                            
+    vTaskDelay(pdMS_TO_TICKS(100));
+}
+
+void line_reading_markers_validation(void) {
+    line_reading_update();
+    line_reading_data_t data = line_reading_get_data();
+
+    raven_comm_send_message(TAG, "Left Markers: %d | Right Markers: %d | Crossings: %d | Instantaneous STATUS: %d", 
+                            data.markers.left_markers_counter, 
+                            data.markers.right_markers_counter,
+                            data.markers.crossings_counter,
+                            data.markers.marker_status);
                             
     vTaskDelay(pdMS_TO_TICKS(100));
 }

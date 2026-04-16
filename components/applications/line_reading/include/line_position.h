@@ -37,7 +37,7 @@ typedef struct {
  * * This function processes the array of calibrated sensor readings, applies noise 
  * filtering, calculates the weighted position, and manages the memory of the last 
  * known direction when the line is lost.
- * * @param normalized_readings Array containing the calibrated readings from the frontal sensor array (0 to CALIBRATION_MAX_VALUE).
+ * * @param normalized_readings Array containing the calibrated readings from the frontal sensor array (0 to LINE_CALIBRATION_MAX_VALUE).
  */
 void line_position_update(uint16_t normalized_readings[NUMBER_OF_FRONTAL_SENSORS]);
 

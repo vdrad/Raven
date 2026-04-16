@@ -15,7 +15,7 @@
 /** * @brief The maximum value after calibration. 
  * E.g., if set to 2000, outputs will range from 0 (background) to 2000 (line). 
  */
-#define CALIBRATION_MAX_VALUE       2000
+#define LINE_CALIBRATION_MAX_VALUE       2000
 
 /** @brief Duration of the manual calibration process in milliseconds. */
 #define CALIBRATION_DURATION_MS     5000

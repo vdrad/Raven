@@ -252,7 +252,8 @@ static void *state_test(void *args) {
 
     // line_reading_raw_validation();
     // line_reading_normalized_validation();
-    line_reading_position_validation();
+    // line_reading_position_validation();
+    line_reading_markers_validation();
 
     return NULL;
 }

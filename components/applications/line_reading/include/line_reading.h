@@ -9,7 +9,7 @@
 
 #include "line_configs.h"
 #include "line_position.h"
-// #include "line_markers.h"
+#include "line_markers.h"
 
 /* ========================================================================== */
 /* PUBLIC DEFINITIONS & STRUCTURES                                            */
@@ -21,7 +21,7 @@
  */
 typedef struct {
     line_position_data_t position;    /**< Center of mass and line tracking state */
-    // line_markers_data_t markers;   /**< Detected intersections and markers  */
+    line_markers_data_t markers;      /**< Detected intersections and markers  */
     bool is_valid;                    /**< True if the SPI read was successful */
 } line_reading_data_t;
 
@@ -44,8 +44,13 @@ void line_reading_update(void);
  */
 line_reading_data_t line_reading_get_data(void);
 
-// Calibration and Debug
+/**
+ * @brief Calibrates line sensors for optimal reading performance.
+ */
 void line_reading_calibrate(void);
+
+// Debug
 void line_reading_raw_validation(void);
 void line_reading_normalized_validation(void);
 void line_reading_position_validation(void);
+void line_reading_markers_validation(void);
