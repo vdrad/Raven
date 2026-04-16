@@ -117,9 +117,9 @@ static const notification_config_t NOTIFY_PROFILE_EMERGENCY_STOP_STATE = {
     NOTIFY_PATTERN_BLINK_EXHAUSTS, 
     COLOR_RED, 
     NOTE_REST, 
-    100, 
+    200, 
     1, 
-    true,
+    false,
     0
 };
 
@@ -506,7 +506,7 @@ static void state_machine_commands_task(void *pvParameters) {
                     break;
             }
         }
-        vTaskDelay(pdMS_TO_TICKS(500));
+        vTaskDelay(pdMS_TO_TICKS(20));
     }
     vTaskDelete(NULL);
 }
