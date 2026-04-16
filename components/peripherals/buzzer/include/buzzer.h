@@ -10,6 +10,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "notes.h"
 
 /**
  * @brief Structure representing a single musical note or tone.

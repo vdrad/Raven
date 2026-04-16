@@ -4,7 +4,6 @@
  */
 
 #include "buzzer.h"
-#include "notes.h"
 
 // ESP-IDF Hardware Drivers
 #include "driver/ledc.h"
