@@ -460,10 +460,10 @@ void ICM45686_peripheral_validation(void) {
  * Calculates average, minimum, and maximum execution times across 1000 samples
  * for reading ALL active channels, using the internal CPU cycle counter.
  *
- * Benchmark Results (ESP32-S3 Mini 1U) for a full array read:
- * - Average Time: 456.0 us
- * - Minimum Time: 455.0 us
- * - Maximum Time: 470.0 us
+ * Benchmark Results (ESP32-S3 WROOM-1 N16R0) for a full array read:
+ * - Average Time: 449.0 us
+ * - Minimum Time: 448.0 us
+ * - Maximum Time: 500.0 us
  * 
  */
 void ICM45686_benchmark_read(void) {

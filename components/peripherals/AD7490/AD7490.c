@@ -229,6 +229,17 @@ void AD7490_peripheral_validation(void) {
     }
 }
 
+/**
+ * @brief Executes a performance benchmark on the AD7490 SPI read function.
+ * Calculates average, minimum, and maximum execution times across 1000 samples
+ * for reading ALL active channels, using the internal CPU cycle counter.
+ *
+ * Benchmark Results (ESP32-S3 WROOM-1 N16R0) for a full array read:
+ * - Average Time: 353.1 us
+ * - Minimum Time: 349.2 us
+ * - Maximum Time: 452.6 us
+ * 
+ */
 void AD7490_benchmark_read(void) {
     // Safety guard added
     if (!initialized) {
