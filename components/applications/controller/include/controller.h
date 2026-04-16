@@ -10,7 +10,7 @@
 #pragma once
 
 #include <stdint.h>
-#include "pid.h"
+#include "controller_pid.h"
 
 /* =========================================================================
  * MACROS
