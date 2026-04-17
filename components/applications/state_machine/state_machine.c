@@ -397,7 +397,8 @@ static void *state_cooldown_run(void *args) {
 
 static void *state_emergency_stop(void *args) {
     race_manager_stop(); 
-    REQUEST_STATE(state_emergency_stop); 
+    motor_coast(MOTOR_FAN);
+    REQUEST_STATE(state_full_stop); 
     
     return NULL;
 }

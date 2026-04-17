@@ -28,9 +28,9 @@
 
 /* --- GLOBAL PID INSTANCES --- */
 pid_context_t line_position_pid = {
-    .kP                 = 0.064f,      
+    .kP                 = 0.026f,      
     .kI                 = 0.0f,           
-    .kD                 = 0.00064f,               
+    .kD                 = 0.00026f,               
     .bias               = 0.0f,             
 
     .ff_coef            = 0.0,
