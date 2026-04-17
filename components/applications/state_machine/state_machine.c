@@ -98,10 +98,10 @@ static const notification_config_t NOTIFY_PROFILE_WARMUP_STATE_BEGINNING = {
     0
 };
 static const notification_config_t NOTIFY_PROFILE_WARMUP_STATE_ENDING = {
-    NOTIFY_PATTERN_EXHAUSTS_SPOOL, 
+    NOTIFY_PATTERN_BLINK_EDGES, 
     COLOR_PURPLE, 
     NOTE_A3, 
-    20, 
+    80, 
     1, 
     true,
     0
@@ -307,8 +307,11 @@ static void *state_armed_run(void *args) {
 
 static void *state_warmup_entry(void *args) {
     notification_play(&NOTIFY_PROFILE_WARMUP_STATE_BEGINNING);
-    warmup_timer_ms = 0; // Reset our sequence timer
     
+    // TODO: add as macro
+    motor_ramp_voltage_blocking(MOTOR_FAN, 7.0f, 1.0f);
+
+    warmup_timer_ms = 0; 
     REQUEST_STATE(state_warmup_run);
     return NULL;
 }
@@ -327,8 +330,6 @@ static void *state_warmup_run(void *args) {
         REQUEST_STATE(state_racing);
     }
 
-    // Returns INSTANTLY. If an emergency stop is requested during this 
-    // 1-second window, the master loop will catch it and abort the warmup immediately!
     return NULL;
 }
 
@@ -358,6 +359,8 @@ static void *state_racing(void *args) {
  */
 static void *state_cooldown_entry(void *args) {
     notification_play(&NOTIFY_PROFILE_COOLDOWN_STATE);
+    motor_ramp_voltage_blocking(MOTOR_FAN, 0.0f, 1.0f);
+
     REQUEST_STATE(state_cooldown_run); 
     return NULL;
 }
