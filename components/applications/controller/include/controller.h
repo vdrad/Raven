@@ -20,6 +20,7 @@
  * GLOBAL PID INSTANCES
  * ========================================================================= */
 
+extern pid_context_t line_position_pid;
 extern pid_context_t right_motor_pid;
 extern pid_context_t left_motor_pid;
 

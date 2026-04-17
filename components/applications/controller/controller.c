@@ -27,46 +27,67 @@
 #define TAG "CTR"
 
 /* --- GLOBAL PID INSTANCES --- */
+pid_context_t line_position_pid = {
+    .kP                 = 0.0f,      
+    .kI                 = 0.0f,           
+    .kD                 = 0.0f,               
+    .bias               = 0.0f,             
+
+    .ff_coef            = 0.0,
+    .ff_bias            = 0.0f,
+
+    .tm                 = 0.0f,
+
+    .setpoint           = 0.0f,        
+    .current_reading    = 0.0f,  
+
+    .integral_sum       = 0.0f,
+    .max_integral_sum   = 0.0f,
+
+    .max_output         = 0.0f,      
+    .min_output         = 0.0f,           
+};
+
 pid_context_t right_motor_pid = {
-    .kP     = 12.6420f,      
-    .kI     = 452.0095f,           
-    .kD     = 0.0f,               
-    .bias   = 0.0f,             
+    .kP                 = 12.6420f,      
+    .kI                 = 452.0095f,           
+    .kD                 = 0.0f,               
+    .bias               = 0.0f,             
 
-    .ff_coef = 0.91418f,
-    .ff_bias = 0.11392f,
+    .ff_coef            = 0.91418f,
+    .ff_bias            = 0.11392f,
 
-    .tm = 0.22243f,
+    .tm                 = 0.22243f,
 
-    .setpoint = 1.5f,        
-    .current_reading = 0.0f,  
+    .setpoint           = 0.5f,        
+    .current_reading    = 0.0f,  
 
-    .integral_sum     = 0.0f,
-    .max_integral_sum = 0.08f,
+    .integral_sum       = 0.0f,
+    .max_integral_sum   = 0.08f,
 
-    .max_output =  BATTERY_MONITORING_HIGH_VOLTAGE,      
-    .min_output = -BATTERY_MONITORING_HIGH_VOLTAGE,           
+    .max_output         =  BATTERY_MONITORING_HIGH_VOLTAGE,      
+    .min_output         = -BATTERY_MONITORING_HIGH_VOLTAGE,           
 };
 
 pid_context_t left_motor_pid = {
-    .kP     = 12.8641f,               
-    .kI     = 459.2188f,               
-    .kD     = 0.0f,               
-    .bias   = 0.0f,             
+    .kP                 = 12.8641f,               
+    .kI                 = 459.2188f,               
+    .kD                 = 0.0f,               
+    .bias               = 0.0f,             
 
-    .ff_coef = 0.90832f,
-    .ff_bias = 0.13873f,
+    .ff_coef            = 0.90832f,
+    .ff_bias            = 0.13873f,
 
-    .tm = 0.22744f,
+    .tm                 = 0.22744f,
 
-    .setpoint = 1.5f,        
-    .current_reading = 0.0f,  
+    .setpoint           = 0.5f,        
+    .current_reading    = 0.0f,  
 
-    .integral_sum     = 0.0f,
-    .max_integral_sum = 0.08f,
+    .integral_sum       = 0.0f,
+    .max_integral_sum   = 0.08f,
 
-    .max_output =  BATTERY_MONITORING_HIGH_VOLTAGE,      
-    .min_output = -BATTERY_MONITORING_HIGH_VOLTAGE,           
+    .max_output         =  BATTERY_MONITORING_HIGH_VOLTAGE,      
+    .min_output         = -BATTERY_MONITORING_HIGH_VOLTAGE,           
 };
 
 /**
