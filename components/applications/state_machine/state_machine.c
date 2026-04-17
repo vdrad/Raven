@@ -32,8 +32,10 @@
 #include "controller.h"
 #include "line_reading.h"
 #include "notifications.h"
+#include "race_manager.h"
 
 #define TAG "SMA"
+#define STATE_MACHINE_REFRESH_RATE_MS   20
 
 /* ========================================================================== */
 /* MACROS, TYPES & ENUMS                                                      */
@@ -86,7 +88,7 @@ static const notification_config_t NOTIFY_PROFILE_ARMED_STATE = {
     false,
     0
 };
-static const notification_config_t NOTIFY_PROFILE_COUNTDOWN_STATE_BEGINNING = {
+static const notification_config_t NOTIFY_PROFILE_WARMUP_STATE_BEGINNING = {
     NOTIFY_PATTERN_SWEEP_TO_EDGES, 
     COLOR_PURPLE, 
     NOTE_C6, 
@@ -95,7 +97,7 @@ static const notification_config_t NOTIFY_PROFILE_COUNTDOWN_STATE_BEGINNING = {
     false,
     0
 };
-static const notification_config_t NOTIFY_PROFILE_COUNTDOWN_STATE_ENDING = {
+static const notification_config_t NOTIFY_PROFILE_WARMUP_STATE_ENDING = {
     NOTIFY_PATTERN_BLINK_EDGES, 
     COLOR_PURPLE, 
     NOTE_A7, 
@@ -123,6 +125,8 @@ static const notification_config_t NOTIFY_PROFILE_EMERGENCY_STOP_STATE = {
     0
 };
 
+static uint32_t warmup_timer_ms = 0; // State variable to track elapsed time
+
 /* ========================================================================== */
 /* FORWARD DECLARATIONS                                                       */
 /* ========================================================================== */
@@ -136,10 +140,18 @@ ADD_STATE(configuration);
 ADD_STATE(line_calibration);
 
 // Core
-ADD_STATE(armed);
-ADD_STATE(countdown);
+ADD_STATE(armed_entry);
+ADD_STATE(armed_run);
+
+ADD_STATE(warmup_entry);
+ADD_STATE(warmup_run);
+
 ADD_STATE(racing);
-ADD_STATE(cooldown);
+
+ADD_STATE(cooldown_entry);
+ADD_STATE(cooldown_run);
+
+ADD_STATE(emergency_stop_entry);
 ADD_STATE(emergency_stop);
 
 // Auxiliary
@@ -155,7 +167,6 @@ static void apply_pending_state_transition(void);
 // --- FreeRTOS Tasks ---
 static void state_machine_task(void *pvParameters);
 static void state_machine_commands_task(void *pvParameters);
-static void state_machine_failsafe_task(void *pvParameters);
 
 /* ========================================================================== */
 /* PRIVATE VARIABLES                                                          */
@@ -184,7 +195,6 @@ static portMUX_TYPE state_spinlock = portMUX_INITIALIZER_UNLOCKED;
 // --- Task Handles ---
 static TaskHandle_t state_machine_task_handle = NULL;
 static TaskHandle_t state_machine_commands_task_handle = NULL;
-static TaskHandle_t state_machine_failsafe_task_handle = NULL;
 
 /* ========================================================================== */
 /* PUBLIC API IMPLEMENTATIONS                                                 */
@@ -218,7 +228,6 @@ void state_machine_init(void) {
     // Initialize tasks for failsafe and background command listening
     xTaskCreate(state_machine_task, "sma_task", 4096, NULL, 5, &state_machine_task_handle);
     xTaskCreate(state_machine_commands_task, "sma_cmd_task", 2048, NULL, 4, &state_machine_commands_task_handle);
-    xTaskCreatePinnedToCore(state_machine_failsafe_task, "sma_failsafe", 2048, NULL, 6, &state_machine_failsafe_task_handle, 1);
 
     RAVEN_LOGI(TAG, "Initialized successfully.");
     raven_comm_send_message(TAG, "State Machine Booted. Active State: %s", state_machine.name);
@@ -257,6 +266,7 @@ static void *state_initialization(void *args) {
     controller_init();
     line_reading_init();
     ICM45686_init();
+    race_manager_init();
 
     raven_comm_send_message(TAG, "All devices initialized.\n");
     REQUEST_STATE(state_configuration);
@@ -279,31 +289,46 @@ static void *state_configuration(void *args) {
 static void *state_line_calibration(void *args) {
     line_reading_calibrate();
     vTaskDelay(pdMS_TO_TICKS(800)); // Give time to notifications
-    REQUEST_STATE(state_armed);
+    REQUEST_STATE(state_armed_entry);
     return NULL;
 }
 
-/**
- * @brief System is configured, calibrated, and waiting for the start signal.
- * @return NULL
- */
-static void *state_armed(void *args) {
+static void *state_armed_entry(void *args) {
     notification_play(&NOTIFY_PROFILE_ARMED_STATE);
-    vTaskDelay(pdMS_TO_TICKS(500));
+    REQUEST_STATE(state_armed_run);
     return NULL;
 }
 
-/**
- * @brief Warmup suction fan and start accelerating.
- * @return NULL
- */
-static void *state_countdown(void *args) {
-    notification_play(&NOTIFY_PROFILE_COUNTDOWN_STATE_BEGINNING);
-    vTaskDelay(pdMS_TO_TICKS(500));
+static void *state_armed_run(void *args) {
+    // We are armed and waiting. Do absolutely nothing, but return instantly 
+    // so the master loop can listen for commands at maximum speed.
+    return NULL; 
+}
 
-    notification_play(&NOTIFY_PROFILE_COUNTDOWN_STATE_ENDING);
-    vTaskDelay(pdMS_TO_TICKS(500));
-    REQUEST_STATE(state_racing);
+static void *state_warmup_entry(void *args) {
+    notification_play(&NOTIFY_PROFILE_WARMUP_STATE_BEGINNING);
+    warmup_timer_ms = 0; // Reset our sequence timer
+    
+    REQUEST_STATE(state_warmup_run);
+    return NULL;
+}
+
+static void *state_warmup_run(void *args) {
+    // Increment the timer by the master heartbeat duration (20ms)
+    warmup_timer_ms += STATE_MACHINE_REFRESH_RATE_MS;
+
+    // At exactly 500ms, trigger the second phase
+    if (warmup_timer_ms == 500) {
+        notification_play(&NOTIFY_PROFILE_WARMUP_STATE_ENDING);
+    } 
+    // At 1000ms, start the race!
+    else if (warmup_timer_ms >= 1000) {
+        race_manager_start();
+        REQUEST_STATE(state_racing);
+    }
+
+    // Returns INSTANTLY. If an emergency stop is requested during this 
+    // 1-second window, the master loop will catch it and abort the warmup immediately!
     return NULL;
 }
 
@@ -312,19 +337,53 @@ static void *state_countdown(void *args) {
  * @return NULL
  */
 static void *state_racing(void *args) {
-    vTaskDelay(pdMS_TO_TICKS(500));
-    REQUEST_STATE(state_cooldown);
+    
+    // NO WHILE LOOP! Executes once per 20ms tick and returns.
+    race_manager_status_t race_status = race_manager_get_status();
+
+    if (race_status == RACE_STATUS_COMPLETED) {
+        // Point to our new intermediate entry state!
+        REQUEST_STATE(state_cooldown_entry);
+    } 
+    else if (race_status == RACE_STATUS_OFF_TRACK) {
+        REQUEST_STATE(state_emergency_stop);
+    }
+
     return NULL;
 }
 
 /**
- * @brief Race is finished, the robot is progressively decelerating untill full stop.
+ * @brief INTERMEDIATE STATE: Triggers the one-time cooldown setup.
  * @return NULL
  */
-static void *state_cooldown(void *args) {
+static void *state_cooldown_entry(void *args) {
     notification_play(&NOTIFY_PROFILE_COOLDOWN_STATE);
-    vTaskDelay(pdMS_TO_TICKS(500));
-    REQUEST_STATE(state_emergency_stop);
+    REQUEST_STATE(state_cooldown_run); 
+    return NULL;
+}
+
+/**
+ * @brief CONTINUOUS STATE: Monitors the deceleration until full stop.
+ * @return NULL
+ */
+static void *state_cooldown_run(void *args) {
+    race_manager_status_t status = race_manager_get_status();
+    
+    if (status == RACE_STATUS_STOPPED) {
+        race_manager_stop();
+        REQUEST_STATE(state_armed_entry); 
+    }
+    else if (status == RACE_STATUS_OFF_TRACK) {
+        REQUEST_STATE(state_emergency_stop_entry);
+    }
+    
+    return NULL;
+}
+
+static void *state_emergency_stop_entry(void *args) {
+    race_manager_stop(); 
+    REQUEST_STATE(state_emergency_stop); 
+    
     return NULL;
 }
 
@@ -334,7 +393,6 @@ static void *state_cooldown(void *args) {
  */
 static void *state_emergency_stop(void *args) {
     notification_play(&NOTIFY_PROFILE_EMERGENCY_STOP_STATE);
-    vTaskDelay(pdMS_TO_TICKS(500));
     return NULL;
 }
 
@@ -368,7 +426,7 @@ static void *state_test(void *args) {
     // line_reading_markers_validation();
     
     // notifications_validation();
-    vTaskDelay(pdMS_TO_TICKS(100));
+    // vTaskDelay(pdMS_TO_TICKS(100));
 
     return NULL;
 }
@@ -379,9 +437,6 @@ static void *state_test(void *args) {
  */
 static void *state_validation(void *args) {
     peripheral_validation(PERIPHERAL_ALL);
-    
-    // Delay to yield to other tasks and prevent hardware watchdog triggers
-    vTaskDelay(pdMS_TO_TICKS(1000));
     return NULL;
 }
 
@@ -461,6 +516,8 @@ static void state_machine_task(void *pvParameters) {
     // Infinite loop processing the current state callback
     for (;;) {
         state_machine_step();
+
+        vTaskDelay(pdMS_TO_TICKS(STATE_MACHINE_REFRESH_RATE_MS));
     }
     
     // Failsafe: if we ever break out of the loop, delete the task properly
@@ -495,7 +552,7 @@ static void state_machine_commands_task(void *pvParameters) {
                     REQUEST_STATE(state_line_calibration);
                     break;
                 case SMA_CMD_ENTER_RACING_STATE:
-                    if (state_machine.cb == state_armed) REQUEST_STATE(state_countdown);
+                    if (state_machine.cb == state_armed_run) REQUEST_STATE(state_warmup_entry);
                     else raven_comm_send_message(TAG, "Command Rejected: Robot is not ARMED.");
                     break;
                 case SMA_CMD_ENTER_EMERGENCY_STOP_STATE:
@@ -506,28 +563,6 @@ static void state_machine_commands_task(void *pvParameters) {
                     break;
             }
         }
-        vTaskDelay(pdMS_TO_TICKS(20));
-    }
-    vTaskDelete(NULL);
-}
-
-/**
- * @brief High-priority task monitoring critical systems to trigger emergency stops.
- */
-static void state_machine_failsafe_task(void *pvParameters) {
-    for (;;) {
-        // TODO: Read battery level
-        // TODO: Read line sensor (cliff detection)
-        // TODO: Monitor emergency stop button/command
-        
-        // Example logic:
-        // if (battery_is_critical() || cliff_detected()) {
-        //     motor_stop_all();
-        //     REQUEST_STATE(state_wait_user_connection); // Safe fallback state
-        // }
-
-        // Runs frequently to ensure extremely fast reaction times
-        vTaskDelay(pdMS_TO_TICKS(10000)); 
     }
     vTaskDelete(NULL);
 }
