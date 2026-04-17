@@ -33,6 +33,7 @@
 #include "line_reading.h"
 #include "notifications.h"
 #include "race_manager.h"
+#include "robot_telemetry.h"
 
 #define TAG "SMA"
 #define STATE_MACHINE_REFRESH_RATE_MS   20
@@ -73,6 +74,7 @@ typedef enum {
     SMA_CMD_ENTER_LINE_CALIBRATION_STATE,       /**< Line Calibration command (Header: 'S', Payload: 'CAL'). */
     SMA_CMD_ENTER_RACING_STATE,                 /**< Racing command (Header: 'S', Payload: 'RCN'). */
     SMA_CMD_ENTER_EMERGENCY_STOP_STATE,         /**< Emergency Stop command (Header: 'S', Payload: 'STP'). */
+    SMA_CMD_ENTER_TELEMETRY_STATE,              /**< Telemetry command (Header: 'S', Payload: 'TLM'). */
     SMA_CMD_ENTER_TESTING_STATE,                /**< State Machine command (Header: 'S', Payload: 'TST'). */
     SMA_CMD_ENTER_VALIDATION_STATE,             /**< Hardware validation command (Header: 'S', Payload: 'VLD'). */
     SMA_CMD_ENTER_PID_TUNING_STATE,             /**< PID Tuning command (Header: 'S', Payload: 'PID'). */
@@ -124,6 +126,15 @@ static const notification_config_t NOTIFY_PROFILE_EMERGENCY_STOP_STATE = {
     false,
     0
 };
+static const notification_config_t NOTIFY_PROFILE_TELEMETRY_STATE = {
+    NOTIFY_PATTERN_SWEEP_TO_EDGES, 
+    COLOR_PURPLE, 
+    NOTE_A7, 
+    80, 
+    NOTIFY_INFINITE, 
+    false,
+    0
+};
 
 static uint32_t warmup_timer_ms = 0; // State variable to track elapsed time
 
@@ -159,6 +170,7 @@ ADD_STATE(test);
 ADD_STATE(validation);
 ADD_STATE(pid_tuning);
 ADD_STATE(motor_characterization);
+ADD_STATE(telemetry);
 
 // --- Private Helpers ---
 static state_machine_cmd_type_t command_decoder(char *payload);
@@ -266,6 +278,7 @@ static void *state_initialization(void *args) {
     line_reading_init();
     ICM45686_init();
     race_manager_init();
+    robot_telemetry_init();
 
     raven_comm_send_message(TAG, "All devices initialized.\n");
     REQUEST_STATE(state_configuration);
@@ -465,6 +478,18 @@ static void *state_motor_characterization(void *args) {
     return NULL;
 }
 
+/**
+ * @brief Sends telemetry to user.
+ * @return NULL
+ */
+static void *state_telemetry(void *args) {
+    notification_play(&NOTIFY_PROFILE_TELEMETRY_STATE);
+    robot_telemetry_trigger_download();
+
+    REQUEST_STATE(state_full_stop);
+    return NULL;
+}
+
 /* ========================================================================== */
 /* PRIVATE FUNCTION IMPLEMENTATIONS                                           */
 /* ========================================================================== */
@@ -500,6 +525,7 @@ static state_machine_cmd_type_t command_decoder(char *payload) {
     if (strcmp(payload, "VLD") == 0) return SMA_CMD_ENTER_VALIDATION_STATE;
     if (strcmp(payload, "PID") == 0) return SMA_CMD_ENTER_PID_TUNING_STATE;
     if (strcmp(payload, "MCR") == 0) return SMA_CMD_ENTER_MOTOR_CHARACTERIZATION_STATE;
+    if (strcmp(payload, "TLM") == 0) return SMA_CMD_ENTER_TELEMETRY_STATE;
 
     raven_comm_send_message(TAG, "Invalid input '%s'. Expecting 'STST' or 'SVLD'.", payload);
     return SMA_CMD_UNKNOWN;
@@ -557,6 +583,10 @@ static void state_machine_commands_task(void *pvParameters) {
                 case SMA_CMD_ENTER_RACING_STATE:
                     if (state_machine.cb == state_armed_run) REQUEST_STATE(state_warmup_entry);
                     else raven_comm_send_message(TAG, "Command Rejected: Robot is not ARMED.");
+                    break;
+                case SMA_CMD_ENTER_TELEMETRY_STATE:
+                    if (state_machine.cb == state_full_stop) REQUEST_STATE(state_telemetry);
+                    else raven_comm_send_message(TAG, "Command Rejected: Robot is not STOPPED.");
                     break;
                 case SMA_CMD_ENTER_EMERGENCY_STOP_STATE:
                     REQUEST_STATE(state_emergency_stop);

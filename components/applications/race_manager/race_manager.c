@@ -14,6 +14,7 @@
 #include "odometry.h"
 #include "controller.h"
 #include "motor.h"
+#include "robot_telemetry.h"
 
 #define TAG "RMG"
 
@@ -149,6 +150,8 @@ static void race_manager_cb(void *arg) {
         default:
             break;
     }
+
+    if (race_status == RACE_STATUS_RACING) robot_telemetry_record_frame();
 }
 
 /* ========================================================================== */
