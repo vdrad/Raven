@@ -76,12 +76,11 @@ void robot_telemetry_record_frame(void) {
     // Get time elapsed in ms
     uint16_t elapsed_ms = (uint16_t)((esp_timer_get_time() - start_time_us) / 1000);
 
-    // Pack the markers into a single byte to save memory (Assuming values 0-3)
-    uint8_t packed_markers = ((line.markers.marker_status & 0x03) << 6) | 
-                             ((line.markers.left_markers_counter & 0x03) << 4) |
-                             ((line.markers.right_markers_counter & 0x03) << 2) |
-                             ((line.markers.crossings_counter & 0x03));
-
+    // Pack 16 bits: [Status:2][Left:7][Right:2][Cross:5]
+    uint16_t packed_markers = ((line.markers.marker_status & 0x03) << 14)        | 
+                              ((line.markers.left_markers_counter & 0x7F) << 7)  |
+                              ((line.markers.right_markers_counter & 0x03) << 5) |
+                              ((line.markers.crossings_counter & 0x1F));
     // 4. Quantize and Store (Fast math, zero formatting)
     telemetry_frame_t *frame = &telemetry_buffer[current_sample_index];
     

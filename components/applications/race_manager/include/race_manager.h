@@ -7,7 +7,7 @@
 #define RACE_MANAGER_DEFAULT_STRAIGHTLINE_SPEED_MPS  2.2f
 #define RACE_MANAGER_MAX_ROBOT_SPEED_MPS             4.0f
 
-#define RACE_MANAGER_DEFAULT_FAN_VOLTAGE             5.0f
+#define RACE_MANAGER_DEFAULT_FAN_VOLTAGE             7.0f
 #define RACE_MANAGER_DEFAULT_FAN_ACCELERATION_VPS    1.0f
 
 // Define your different acceleration profiles

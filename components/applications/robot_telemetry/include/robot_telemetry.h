@@ -15,6 +15,7 @@
 typedef struct __attribute__((packed)) {
     uint16_t time_ms;           // Milliseconds since race start (Max 65.5s)
     uint16_t distance_mm;       // Total distance in mm (Max 65.5 meters)
+    uint16_t markers;           // Packed bitfield: [Status:2][Left:2][Right:2][Cross:2]
     
     int16_t pose_x_mm;          // X position in mm (Max +/- 32.7 meters)
     int16_t pose_y_mm;          // Y position in mm (Max +/- 32.7 meters)
@@ -32,7 +33,6 @@ typedef struct __attribute__((packed)) {
     int16_t pid_right_out;      // Right PID output * 1000
     
     uint8_t battery_dv;         // Battery in decivolts (e.g. 8.4V = 84)
-    uint8_t markers;            // Packed bitfield: [Status:2][Left:2][Right:2][Cross:2]
     uint8_t fan_dv;             // Fan voltage in decivolts (e.g. 5.0V = 50) <-- NEW
 } telemetry_frame_t;
 
