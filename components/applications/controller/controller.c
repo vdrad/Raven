@@ -28,9 +28,9 @@
 
 /* --- GLOBAL PID INSTANCES --- */
 pid_context_t line_position_pid = {
-    .kP                 = 0.0f,      
+    .kP                 = 0.036f,      
     .kI                 = 0.0f,           
-    .kD                 = 0.0f,               
+    .kD                 = 0.00036f,               
     .bias               = 0.0f,             
 
     .ff_coef            = 0.0,
@@ -99,6 +99,8 @@ void controller_init(void) {
     RAVEN_LOGI(TAG, "Initialized successfully.");
     
     // Broadcast initial PID states to the UI/App
+    raven_comm_send_message(TAG, "LINE PID: kP=%.2f kI=%.2f kD=%.2f", 
+                            line_position_pid.kP, line_position_pid.kI, line_position_pid.kD);
     raven_comm_send_message(TAG, "RM PID: kP=%.2f kI=%.2f kD=%.2f", 
                             right_motor_pid.kP, right_motor_pid.kI, right_motor_pid.kD);
     raven_comm_send_message(TAG, "LM PID: kP=%.2f kI=%.2f kD=%.2f", 

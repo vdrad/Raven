@@ -98,10 +98,10 @@ static const notification_config_t NOTIFY_PROFILE_WARMUP_STATE_BEGINNING = {
     0
 };
 static const notification_config_t NOTIFY_PROFILE_WARMUP_STATE_ENDING = {
-    NOTIFY_PATTERN_BLINK_EDGES, 
+    NOTIFY_PATTERN_EXHAUSTS_SPOOL, 
     COLOR_PURPLE, 
-    NOTE_A7, 
-    80, 
+    NOTE_A3, 
+    20, 
     1, 
     true,
     0
@@ -151,8 +151,8 @@ ADD_STATE(racing);
 ADD_STATE(cooldown_entry);
 ADD_STATE(cooldown_run);
 
-ADD_STATE(emergency_stop_entry);
 ADD_STATE(emergency_stop);
+ADD_STATE(full_stop);
 
 // Auxiliary
 ADD_STATE(test);
@@ -294,12 +294,12 @@ static void *state_line_calibration(void *args) {
 }
 
 static void *state_armed_entry(void *args) {
-    notification_play(&NOTIFY_PROFILE_ARMED_STATE);
     REQUEST_STATE(state_armed_run);
     return NULL;
 }
 
 static void *state_armed_run(void *args) {
+    notification_play(&NOTIFY_PROFILE_ARMED_STATE);
     // We are armed and waiting. Do absolutely nothing, but return instantly 
     // so the master loop can listen for commands at maximum speed.
     return NULL; 
@@ -371,16 +371,16 @@ static void *state_cooldown_run(void *args) {
     
     if (status == RACE_STATUS_STOPPED) {
         race_manager_stop();
-        REQUEST_STATE(state_armed_entry); 
+        REQUEST_STATE(state_full_stop); 
     }
     else if (status == RACE_STATUS_OFF_TRACK) {
-        REQUEST_STATE(state_emergency_stop_entry);
+        REQUEST_STATE(state_emergency_stop);
     }
     
     return NULL;
 }
 
-static void *state_emergency_stop_entry(void *args) {
+static void *state_emergency_stop(void *args) {
     race_manager_stop(); 
     REQUEST_STATE(state_emergency_stop); 
     
@@ -391,7 +391,7 @@ static void *state_emergency_stop_entry(void *args) {
  * @brief The user requested immediate stop or a failsafe condition was detected.
  * @return NULL
  */
-static void *state_emergency_stop(void *args) {
+static void *state_full_stop(void *args) {
     notification_play(&NOTIFY_PROFILE_EMERGENCY_STOP_STATE);
     return NULL;
 }

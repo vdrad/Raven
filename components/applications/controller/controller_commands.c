@@ -69,8 +69,8 @@ static pid_context_t* get_target_pid(char target) {
     switch (target) {
         case 'R': return &right_motor_pid;
         case 'L': return &left_motor_pid;
+        case 'N': return &line_position_pid;
         // case 'Y': return &yaw_pid;  // Para o futuro
-        // case 'N': return &line_pid; // Para o futuro
         default:  return NULL;
     }
 }

@@ -26,8 +26,8 @@
 #define RACE_MANAGER_MAX_ROBOT_SPEED_MPS             4.0f
 
 // Define your different acceleration profiles
-#define RACE_MANAGER_DEFAULT_ROBOT_ACCELERATION_MPS2 10.0f
-#define RACE_MANAGER_SLOW_ACCELERATION_MPS2          2.0f
+#define RACE_MANAGER_DEFAULT_ROBOT_ACCELERATION_MPS2 8.0f
+#define RACE_MANAGER_SLOW_ACCELERATION_MPS2          4.0f
 
 // Macro function to compute the increment per tick based on the given acceleration
 #define GET_ACCEL_PER_TICK(accel_mps2) \
@@ -142,7 +142,7 @@ static void race_manager_cb(void *arg) {
                 race_status = RACE_STATUS_RACING;
                 current_acceleration_mps2 = RACE_MANAGER_DEFAULT_ROBOT_ACCELERATION_MPS2;
 
-                raven_comm_send_message(TAG, "Start line crossed. Accelerating to %.1fm/s.", 
+                raven_comm_send_message(TAG, "Start line crossed. Accelerating to %.1f m/s.", 
                                         target_straightline_speed_mps);
             }
             break;
@@ -158,8 +158,8 @@ static void race_manager_cb(void *arg) {
                 target_straightline_speed_mps = 0.0f;
                 current_acceleration_mps2 = RACE_MANAGER_SLOW_ACCELERATION_MPS2;
 
-                raven_comm_send_message(TAG, "Finish line crossed! Track length: %.2fm | Lap Time: %.3fs.\nBraking...", 
-                                        odom_data.distance_traveled_robot_m, lap_time_s);
+                raven_comm_send_message(TAG, "Finish line crossed!\nTrack length: %.2fm\nLap Time: %.3fs.\nAverage Velocity: %.1f m/s", 
+                                        odom_data.distance_traveled_robot_m, lap_time_s, odom_data.distance_traveled_robot_m/lap_time_s);
             }
             break;
 
