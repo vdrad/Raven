@@ -48,6 +48,15 @@ void motor_brake(motor_id_t id);
 void motor_coast(motor_id_t id);
 
 /**
+ * @brief Blocking function that gradually ramps a motor's voltage to a target.
+ * Does not return until the target voltage is fully reached.
+ * * @param[in] id The target motor (e.g., MOTOR_FAN).
+ * @param[in] target_voltage The desired final voltage.
+ * @param[in] ramp_rate_v_per_s The acceleration rate in Volts per second.
+ */
+void motor_ramp_voltage_blocking(motor_id_t id, float target_voltage, float ramp_rate_v_per_s);
+
+/**
  * @brief Blocking diagnostic task to validate all configured motors.
  */
 void motor_peripheral_validation(void);

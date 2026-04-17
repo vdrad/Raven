@@ -10,7 +10,7 @@
 
 // Standard C Libraries
 #include <stdbool.h>
-#include <math.h> // Required for round()
+#include <math.h>
 
 // FreeRTOS
 #include "freertos/FreeRTOS.h"
@@ -47,16 +47,17 @@ typedef struct {
     const char *name;
     uint32_t pin_in1;
     uint32_t pin_in2;
-    drv8874_handle_t handle; // Updated to use the native opaque pointer
+    drv8874_handle_t handle;
+    float current_voltage;
 } motor_instance_t;
 
 /* * Array containing all robot motors. 
  * Indices are explicitly mapped to the motor_id_t enum.
  */
 static motor_instance_t motors[MOTOR_MAX_COUNT] = {
-    [MOTOR_LEFT]  = { .name = "LEFT",  .pin_in1 = LEFT_MOTOR_IN2_PIN,  .pin_in2 = LEFT_MOTOR_IN1_PIN,  .handle = NULL },
-    [MOTOR_RIGHT] = { .name = "RIGHT", .pin_in1 = RIGHT_MOTOR_IN2_PIN, .pin_in2 = RIGHT_MOTOR_IN1_PIN, .handle = NULL },
-    [MOTOR_FAN]   = { .name = "FAN",   .pin_in1 = FAN_MOTOR_IN2_PIN,   .pin_in2 = FAN_MOTOR_IN1_PIN,   .handle = NULL },
+    [MOTOR_LEFT]  = { .name = "LEFT",  .pin_in1 = LEFT_MOTOR_IN2_PIN,  .pin_in2 = LEFT_MOTOR_IN1_PIN,  .current_voltage = 0.0f, .handle = NULL },
+    [MOTOR_RIGHT] = { .name = "RIGHT", .pin_in1 = RIGHT_MOTOR_IN2_PIN, .pin_in2 = RIGHT_MOTOR_IN1_PIN, .current_voltage = 0.0f, .handle = NULL },
+    [MOTOR_FAN]   = { .name = "FAN",   .pin_in1 = FAN_MOTOR_IN2_PIN,   .pin_in2 = FAN_MOTOR_IN1_PIN,   .current_voltage = 0.0f, .handle = NULL },
 };
 
 /* ========================================================================== */
@@ -99,6 +100,8 @@ void motor_set_voltage(motor_id_t id, float voltage) {
     if (voltage >  MOTOR_MAX_VOLTAGE_ALLOWED) voltage =  MOTOR_MAX_VOLTAGE_ALLOWED;
     if (voltage < -MOTOR_MAX_VOLTAGE_ALLOWED) voltage = -MOTOR_MAX_VOLTAGE_ALLOWED;
 
+    motors[id].current_voltage = voltage;
+
     float battery_voltage = battery_sensor_get_voltage();
 
     // Safety constraint: Prevent division by zero if battery reading fails or is critically low
@@ -123,6 +126,7 @@ void motor_set_voltage(motor_id_t id, float voltage) {
  */
 void motor_brake(motor_id_t id) {
     if (!initialized || id >= MOTOR_MAX_COUNT) return;
+    motors[id].current_voltage = 0.0f;
     DRV8874_brake(motors[id].handle);
 }
 
@@ -132,7 +136,51 @@ void motor_brake(motor_id_t id) {
  */
 void motor_coast(motor_id_t id) {
     if (!initialized || id >= MOTOR_MAX_COUNT) return;
+    motors[id].current_voltage = 0.0f;
     DRV8874_coast(motors[id].handle);
+}
+
+/**
+ * @brief Blocking function that gradually ramps a motor's voltage to a target.
+ * Does not return until the target voltage is fully reached.
+ * * @param[in] id The target motor (e.g., MOTOR_FAN).
+ * @param[in] target_voltage The desired final voltage.
+ * @param[in] ramp_rate_v_per_s The acceleration rate in Volts per second.
+ */
+void motor_ramp_voltage_blocking(motor_id_t id, float target_voltage, float ramp_rate_v_per_s) {
+    if (!initialized || id >= MOTOR_MAX_COUNT) return;
+    
+    // Prevent infinite loops if user passes 0 or negative rates
+    if (ramp_rate_v_per_s <= 0.0f) {
+        motor_set_voltage(id, target_voltage);
+        return;
+    }
+
+    const uint32_t step_delay_ms = 20; // 50 Hz update rate (smooth and CPU friendly)
+    
+    // Calculate how much voltage to add/subtract per FreeRTOS tick
+    float v_step = ramp_rate_v_per_s * ((float)step_delay_ms / 1000.0f);
+
+    while (1) {
+        float current = motors[id].current_voltage;
+        float error = target_voltage - current;
+
+        // If we are within one single step of the target, snap to the final target and exit.
+        if (fabsf(error) <= v_step) {
+            motor_set_voltage(id, target_voltage);
+            break; 
+        }
+
+        // Otherwise, move one step closer
+        if (error > 0.0f) {
+            motor_set_voltage(id, current + v_step);
+        } else {
+            motor_set_voltage(id, current - v_step);
+        }
+
+        // Wait for the next cycle
+        vTaskDelay(pdMS_TO_TICKS(step_delay_ms));
+    }
 }
 
 /**
