@@ -12,3 +12,4 @@ race_manager_status_t race_manager_get_status(void);
 void race_manager_init(void);
 void race_manager_stop(void);
 void race_manager_start(void);
+void race_manager_benchmark_cb(void);

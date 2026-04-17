@@ -427,6 +427,7 @@ static void *state_test(void *args) {
     
     // notifications_validation();
     // vTaskDelay(pdMS_TO_TICKS(100));
+    race_manager_benchmark_cb();
 
     return NULL;
 }
@@ -563,6 +564,7 @@ static void state_machine_commands_task(void *pvParameters) {
                     break;
             }
         }
+        vTaskDelay(pdMS_TO_TICKS(STATE_MACHINE_REFRESH_RATE_MS));
     }
     vTaskDelete(NULL);
 }
