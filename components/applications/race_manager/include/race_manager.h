@@ -27,3 +27,10 @@ void race_manager_init(void);
 void race_manager_stop(void);
 void race_manager_start(void);
 void race_manager_benchmark_cb(void);
+
+// Config API
+void race_manager_set_configured_speed(float speed);
+float race_manager_get_configured_speed(void);
+
+void race_manager_set_configured_fan_voltage(float voltage);
+float race_manager_get_configured_fan_voltage(void);

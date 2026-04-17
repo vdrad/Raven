@@ -79,6 +79,7 @@ static void receive_message_cb(uint8_t *data, uint16_t len) {
         case 'V': new_command.type = CMD_VALIDATION;             break;
         case 'C': new_command.type = CMD_CONTROLLER_TUNING;      break;
         case 'M': new_command.type = CMD_MOTOR_CHARACTERIZATION; break;
+        case 'R': new_command.type = CMD_RACE_MANAGER;           break;
         default:  new_command.type = CMD_UNKNOWN; break;
     }
 

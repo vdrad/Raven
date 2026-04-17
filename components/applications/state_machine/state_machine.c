@@ -217,7 +217,6 @@ const uint8_t *state_get_name(void) {
 }
 
 void state_machine_init(void) {
-    // TODO: move this to robot_manager
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         ESP_ERROR_CHECK(nvs_flash_erase());
@@ -308,8 +307,8 @@ static void *state_armed_run(void *args) {
 static void *state_warmup_entry(void *args) {
     notification_play(&NOTIFY_PROFILE_WARMUP_STATE_BEGINNING);
     
-    // TODO: add as macro
-    motor_ramp_voltage_blocking(MOTOR_FAN, RACE_MANAGER_DEFAULT_FAN_VOLTAGE, RACE_MANAGER_DEFAULT_FAN_ACCELERATION_VPS);
+    float fan_voltage = race_manager_get_configured_fan_voltage();
+    motor_ramp_voltage_blocking(MOTOR_FAN, fan_voltage, RACE_MANAGER_DEFAULT_FAN_ACCELERATION_VPS);
 
     warmup_timer_ms = 0; 
     REQUEST_STATE(state_warmup_run);

@@ -34,6 +34,7 @@ typedef enum {
     CMD_STATE_MACHINE,              /**< State Machine command (Header: 'S'). */
     CMD_LINE_READING,               /**< Line Reading command (Header: 'L'). */
     CMD_CONTROLLER_TUNING,          /**< PID Controller command (Header: 'P'). */
+    CMD_RACE_MANAGER,               /**< Race Manager command (Header: 'R'). */
     CMD_MOTOR_CHARACTERIZATION,     /**< Motor Characterization command (Header: 'M'). */
 
     CMD_MAX
