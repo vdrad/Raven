@@ -1,6 +1,9 @@
 /**
  * @file odometry.c
  * @brief Procedural Odometry module implementation with Sensor Fusion architecture.
+ *
+ * Fuses encoder step-distance with IMU gyroscope data to project the robot's
+ * movement accurately onto a 2D global coordinate plane.
  */
 
 #include "odometry.h"
@@ -14,6 +17,7 @@
 
 // Project Includes
 #include "encoder.h"
+#include "ICM45686.h"
 #include "raven_log.h"
 #include "raven_comm.h"
 
@@ -44,7 +48,7 @@
 /* PRIVATE DATA STRUCTURES                                                    */
 /* ========================================================================== */
 
-// Intermediate data from the encoders
+/** @brief Intermediate data calculated from the wheel encoders */
 typedef struct {
     float vel_left_m_s;
     float vel_right_m_s;
@@ -52,7 +56,7 @@ typedef struct {
     float step_dist_m; // Distance traveled in the current dt
 } encoder_odom_t;
 
-// Intermediate data from the IMU
+/** @brief Intermediate data calculated from the IMU */
 typedef struct {
     float yaw_rad;
     float accel_x;
@@ -146,6 +150,9 @@ void odometry_reset(void) {
 /* PRIVATE FUNCTION IMPLEMENTATIONS                                           */
 /* ========================================================================== */
 
+/**
+ * @brief Prepares the encoder hardware and initial states.
+ */
 static void encoder_odometry_init(void) {
     encoder_init();
     encoder_get_count(ENCODER_LEFT, &last_left_count);
@@ -158,10 +165,19 @@ static void encoder_odometry_init(void) {
     #endif
 }
 
+/**
+ * @brief Prepares the IMU odometry baseline.
+ * @note Assumes the IMU hardware was already initialized by the main system.
+ */
 static void imu_odometry_init(void) {
-    // TODO: Initialize IMU hardware, calibrate gyro, set baseline yaw
+    // Reset heading to exactly 0 on initialization
+    raw_imu_data.yaw_rad = 0.0f; 
 }
 
+/**
+ * @brief Reads wheel encoders and computes velocities and distance traveled.
+ * @param dt_s Delta time in seconds since the last update.
+ */
 static void encoder_odometry_update(float dt_s) {
     int left_count = 0, right_count = 0;
     encoder_get_count(ENCODER_LEFT, &left_count);
@@ -193,37 +209,55 @@ static void encoder_odometry_update(float dt_s) {
     last_right_count = right_count;
 }
 
+/**
+ * @brief Reads the IMU and performs Euler integration to update heading.
+ * @param dt_s Delta time in seconds since the last update.
+ */
 static void imu_odometry_update(float dt_s) {
-    // TODO: Read IMU registers, apply filtering, update raw_imu_data.yaw_rad
+    icm45686_data_t imu_data;
+    ICM45686_get_data(&imu_data);
+
+    // Note: get_data() already converted gyro_z to Radians Per Second internally.
+    // Integrate angular velocity to find total accumulated yaw angle.
+    raw_imu_data.yaw_rad += (imu_data.gyro_z * dt_s);
+    
+    // Store accelerations if needed for advanced slip detection or filtering later
+    raw_imu_data.accel_x = imu_data.accel_x;
+    raw_imu_data.accel_y = imu_data.accel_y;
 }
 
+/**
+ * @brief Fuses encoder and IMU data to update the global coordinate frame.
+ */
 static void fuse_odometry(void) {
     // 1. Pass through wheel speeds directly from encoder
     current_odom_data.velocity_left_m_s  = raw_enc_data.vel_left_m_s;
     current_odom_data.velocity_right_m_s = raw_enc_data.vel_right_m_s;
     current_odom_data.distance_traveled_robot_m += raw_enc_data.step_dist_m;
 
-    // 2. Determine Yaw (Use IMU if available, otherwise fallback/skip)
-    // NOTE: Once IMU is ready: current_odom_data.yaw_rad = raw_imu_data.yaw_rad;
+    // 2. Assign Yaw
+    current_odom_data.yaw_rad = raw_imu_data.yaw_rad;
 
-    // 3. Fuse X, Y Position
-    // Combines the highly accurate 'step distance' from the encoders with the highly 
-    // accurate 'yaw' from the IMU to project the movement onto the global X,Y plane.
-    // current_odom_data.pose_x_m += raw_enc_data.step_dist_m * cosf(current_odom_data.yaw_rad);
-    // current_odom_data.pose_y_m += raw_enc_data.step_dist_m * sinf(current_odom_data.yaw_rad);
+    // 3. Fuse X, Y Position using IMU Heading + Encoder Distance
+    current_odom_data.pose_x_m += raw_enc_data.step_dist_m * cosf(current_odom_data.yaw_rad);
+    current_odom_data.pose_y_m += raw_enc_data.step_dist_m * sinf(current_odom_data.yaw_rad);
 
-    // 4. Fuse Robot Center Velocity
-    // NOTE: Could be pure encoder, pure IMU integral, or a Kalman filter output.
+    // 4. Update Center velocity
     current_odom_data.velocity_robot_m_s = raw_enc_data.vel_center_m_s; 
 }
 
+/**
+ * @brief Resets the encoder internal variables.
+ */
 static void encoder_odometry_reset(void) {
     encoder_get_count(ENCODER_LEFT, &last_left_count);
     encoder_get_count(ENCODER_RIGHT, &last_right_count);
     raw_enc_data = (encoder_odom_t){0};
 }
 
+/**
+ * @brief Resets the IMU internal yaw baseline.
+ */
 static void imu_odometry_reset(void) {
-    // TODO: Reset IMU yaw baseline
     raw_imu_data = (imu_odom_t){0};
 }
