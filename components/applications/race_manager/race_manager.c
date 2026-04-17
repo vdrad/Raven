@@ -17,17 +17,7 @@
 
 #define TAG "RMG"
 
-/* ========================================================================== */
-/* MACROS & CONFIGURATIONS                                                    */
-/* ========================================================================== */
-
-#define RACE_MANAGER_REFRESH_RATE_MS                 1
-#define RACE_MANAGER_DEFAULT_STRAIGHTLINE_SPEED_MPS  2.2f
-#define RACE_MANAGER_MAX_ROBOT_SPEED_MPS             4.0f
-
-// Define your different acceleration profiles
-#define RACE_MANAGER_DEFAULT_ROBOT_ACCELERATION_MPS2 8.0f
-#define RACE_MANAGER_SLOW_ACCELERATION_MPS2          3.0f
+#define RACE_MANAGER_REFRESH_RATE_MS 1
 
 // Macro function to compute the increment per tick based on the given acceleration
 #define GET_ACCEL_PER_TICK(accel_mps2) \

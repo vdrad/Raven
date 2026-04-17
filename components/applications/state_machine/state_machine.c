@@ -309,7 +309,7 @@ static void *state_warmup_entry(void *args) {
     notification_play(&NOTIFY_PROFILE_WARMUP_STATE_BEGINNING);
     
     // TODO: add as macro
-    motor_ramp_voltage_blocking(MOTOR_FAN, 7.0f, 1.0f);
+    motor_ramp_voltage_blocking(MOTOR_FAN, RACE_MANAGER_DEFAULT_FAN_VOLTAGE, RACE_MANAGER_DEFAULT_FAN_ACCELERATION_VPS);
 
     warmup_timer_ms = 0; 
     REQUEST_STATE(state_warmup_run);
@@ -359,7 +359,7 @@ static void *state_racing(void *args) {
  */
 static void *state_cooldown_entry(void *args) {
     notification_play(&NOTIFY_PROFILE_COOLDOWN_STATE);
-    motor_ramp_voltage_blocking(MOTOR_FAN, 0.0f, 1.0f);
+    motor_ramp_voltage_blocking(MOTOR_FAN, 0.0f, RACE_MANAGER_DEFAULT_FAN_ACCELERATION_VPS);
 
     REQUEST_STATE(state_cooldown_run); 
     return NULL;

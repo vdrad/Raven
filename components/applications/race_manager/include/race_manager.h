@@ -1,5 +1,19 @@
 #pragma once
 
+/* ========================================================================== */
+/* MACROS & CONFIGURATIONS                                                    */
+/* ========================================================================== */
+
+#define RACE_MANAGER_DEFAULT_STRAIGHTLINE_SPEED_MPS  2.2f
+#define RACE_MANAGER_MAX_ROBOT_SPEED_MPS             4.0f
+
+#define RACE_MANAGER_DEFAULT_FAN_VOLTAGE             5.0f
+#define RACE_MANAGER_DEFAULT_FAN_ACCELERATION_VPS    1.0f
+
+// Define your different acceleration profiles
+#define RACE_MANAGER_DEFAULT_ROBOT_ACCELERATION_MPS2 8.0f
+#define RACE_MANAGER_SLOW_ACCELERATION_MPS2          3.0f
+
 typedef enum {
     RACE_STATUS_PRE_START_ZONE, // Inside the start-finish region
     RACE_STATUS_RACING,         // Running on the track
