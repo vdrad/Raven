@@ -183,6 +183,10 @@ void motor_ramp_voltage_blocking(motor_id_t id, float target_voltage, float ramp
     }
 }
 
+float motor_get_voltage(motor_id_t id) {
+    return motors[id].current_voltage;
+}
+
 /**
  * @brief Blocking diagnostic task to validate all configured motors.
  */

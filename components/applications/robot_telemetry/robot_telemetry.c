@@ -13,7 +13,7 @@
 #include "odometry.h"
 #include "controller.h"
 #include "battery_sensor.h"
-#include "race_manager.h"
+#include "motor.h"
 
 #define TAG "TLM"
 
@@ -106,7 +106,7 @@ void robot_telemetry_record_frame(void) {
     frame->markers          = packed_markers;
     
     // --> NEW: Grab fan voltage (Adjust getter to match your codebase if needed)
-    // frame->fan_dv           = (uint8_t)(motor_get_voltage(MOTOR_FAN) * 10.0f); 
+    frame->fan_dv           = (uint8_t)(motor_get_voltage(MOTOR_FAN) * 10.0f); 
 
     // 5. Advance index
     current_sample_index++;

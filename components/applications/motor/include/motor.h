@@ -56,6 +56,8 @@ void motor_coast(motor_id_t id);
  */
 void motor_ramp_voltage_blocking(motor_id_t id, float target_voltage, float ramp_rate_v_per_s);
 
+float motor_get_voltage(motor_id_t id);
+
 /**
  * @brief Blocking diagnostic task to validate all configured motors.
  */
