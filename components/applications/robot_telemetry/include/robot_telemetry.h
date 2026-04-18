@@ -20,6 +20,8 @@ typedef struct __attribute__((packed)) {
     int16_t pose_x_mm;          // X position in mm (Max +/- 32.7 meters)
     int16_t pose_y_mm;          // Y position in mm (Max +/- 32.7 meters)
     int16_t yaw_mrad;           // Yaw in milliradians (1 rad = 1000 mrad)
+    int16_t accel_x_mg;         // X Axis Acceleration in mg
+    int16_t accel_y_mg;         // Y Axis Acceleration in mg
     
     int16_t vel_left_mmps;      // Left wheel speed (mm/s)
     int16_t vel_right_mmps;     // Right wheel speed (mm/s)

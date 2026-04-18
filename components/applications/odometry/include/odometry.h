@@ -25,6 +25,8 @@ typedef struct {
     float pose_x_m;                  /**< Global X position in meters */
     float pose_y_m;                  /**< Global Y position in meters */
     float yaw_rad;                   /**< Robot heading (yaw) in radians */
+    float acceleration_x;            /**< Robot acceleration in x axis (g) */
+    float acceleration_y;            /**< Robot acceleration in y axis (g) */
 } odometry_data_t;
 
 /**

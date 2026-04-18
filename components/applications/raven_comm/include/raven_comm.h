@@ -16,7 +16,7 @@
 /* MACROS                                                                     */
 /* ========================================================================== */
 
-#define RAVEN_COMM_MAX_MESSAGE_LEN  128
+#define RAVEN_COMM_MAX_MESSAGE_LEN  150
 #define RAVEN_COMM_MAX_PAYLOAD_LEN (RAVEN_COMM_MAX_MESSAGE_LEN - 3)
 
 /* ========================================================================== */

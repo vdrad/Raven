@@ -90,6 +90,8 @@ void robot_telemetry_record_frame(void) {
     frame->pose_x_mm        = (int16_t)(odom.pose_x_m * 1000.0f);
     frame->pose_y_mm        = (int16_t)(odom.pose_y_m * 1000.0f);
     frame->yaw_mrad         = (int16_t)(odom.yaw_rad * 1000.0f);
+    frame->accel_x_mg       = (int16_t)(odom.yaw_rad * 1000.0f);
+    frame->accel_y_mg       = (int16_t)(odom.yaw_rad * 1000.0f);
     
     frame->vel_left_mmps    = (int16_t)(odom.velocity_left_m_s * 1000.0f);
     frame->vel_right_mmps   = (int16_t)(odom.velocity_right_m_s * 1000.0f);
@@ -125,7 +127,7 @@ static void download_task(void *pvParameters) {
 
     raven_comm_send_message(TAG, "--- TELEMETRY START (%lu samples) ---", current_sample_index);
     // Updated header string
-    raven_comm_send_message(TAG, "Time_ms,Dist_mm,X_mm,Y_mm,Yaw_mrad,VelL_mmps,VelR_mmps,LinePos,PidLine,PidLSet,PidRSet,PidLOut,PidROut,Bat_dv,Markers,Fan_dv");
+    raven_comm_send_message(TAG, "Time_ms,Dist_mm,X_mm,Y_mm,Yaw_mrad,Accel_x_mg,Accel_y_mg,VelL_mmps,VelR_mmps,LinePos,PidLine,PidLSet,PidRSet,PidLOut,PidROut,Bat_dv,Markers,Fan_dv");
 
     char row_buf[256];
 
@@ -136,9 +138,9 @@ static void download_task(void *pvParameters) {
         snprintf(row_buf, sizeof(row_buf), 
             "%u,%u,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%u,%u,%u",
             f->time_ms, f->distance_mm, f->pose_x_mm, f->pose_y_mm, f->yaw_mrad,
-            f->vel_left_mmps, f->vel_right_mmps, f->line_position, f->pid_line_out,
-            f->pid_left_set, f->pid_right_set, f->pid_left_out, f->pid_right_out,
-            f->battery_dv, f->markers, f->fan_dv);
+            f->accel_x_mg,f->accel_y_mg,f->vel_left_mmps, f->vel_right_mmps, 
+            f->line_position, f->pid_line_out,f->pid_left_set, f->pid_right_set, 
+            f->pid_left_out, f->pid_right_out,f->battery_dv, f->markers, f->fan_dv);
 
         raven_comm_send_message(TAG, "%s", row_buf);
         

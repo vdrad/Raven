@@ -238,11 +238,15 @@ static void fuse_odometry(void) {
     // 2. Assign Yaw
     current_odom_data.yaw_rad = raw_imu_data.yaw_rad;
 
-    // 3. Fuse X, Y Position using IMU Heading + Encoder Distance
+    // 3. Assign Robot Acceleration
+    current_odom_data.acceleration_x = raw_imu_data.accel_x;
+    current_odom_data.acceleration_y = raw_imu_data.accel_y;
+
+    // 4. Fuse X, Y Position using IMU Heading + Encoder Distance
     current_odom_data.pose_x_m += raw_enc_data.step_dist_m * cosf(current_odom_data.yaw_rad);
     current_odom_data.pose_y_m += raw_enc_data.step_dist_m * sinf(current_odom_data.yaw_rad);
 
-    // 4. Update Center velocity
+    // 5. Update Center velocity
     current_odom_data.velocity_robot_m_s = raw_enc_data.vel_center_m_s; 
 }
 
