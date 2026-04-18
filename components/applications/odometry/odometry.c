@@ -32,7 +32,7 @@
 #define ODOMETRY_EMA_ALPHA 0.2f   // Smoothing factor: 0.0 (ignore new) to 1.0 (no smoothing)
 
 /* --- MECHANICAL CONSTANTS --- */
-#define ENCODER_GEAR_TEETH  12.0f
+#define ENCODER_GEAR_TEETH  24.0f
 #define WHEEL_GEAR_TEETH    60.0f
 #define WHEEL_DIAMETER_MM   28.0f
 
