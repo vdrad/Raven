@@ -4,15 +4,15 @@
 /* MACROS & CONFIGURATIONS                                                    */
 /* ========================================================================== */
 
-#define RACE_MANAGER_DEFAULT_STRAIGHTLINE_SPEED_MPS  2.6f
+#define RACE_MANAGER_DEFAULT_STRAIGHTLINE_SPEED_MPS  1.7f
 #define RACE_MANAGER_MAX_ROBOT_SPEED_MPS             4.0f
 
-#define RACE_MANAGER_DEFAULT_FAN_VOLTAGE             9.0f
+#define RACE_MANAGER_DEFAULT_FAN_VOLTAGE             8.0f
 #define RACE_MANAGER_DEFAULT_FAN_ACCELERATION_VPS    1.0f
 
 // Define your different acceleration profiles
 #define RACE_MANAGER_DEFAULT_ROBOT_ACCELERATION_MPS2 8.0f
-#define RACE_MANAGER_SLOW_ACCELERATION_MPS2          4.0f
+#define RACE_MANAGER_SLOW_ACCELERATION_MPS2          5.0f
 
 typedef enum {
     RACE_STATUS_PRE_START_ZONE, // Inside the start-finish region
@@ -27,6 +27,8 @@ void race_manager_init(void);
 void race_manager_stop(void);
 void race_manager_start(void);
 void race_manager_benchmark_cb(void);
+
+void race_manager_commands_task(void *pvParameters);
 
 // Config API
 void race_manager_set_configured_speed(float speed);

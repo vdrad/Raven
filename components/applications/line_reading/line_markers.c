@@ -31,6 +31,8 @@
 #define LINE_MARKERS_DETECTION_NOTE_FREQUENCY     NOTE_B7
 #define LINE_MARKERS_DETECTION_NOTE_DURATION_MS   120
 
+#define LINE_MARKER_MINIMUM_LEFT_MARKERS_TO_COUNT 20
+
 /* ========================================================================== */
 /* PRIVATE VARIABLES                                                          */
 /* ========================================================================== */
@@ -111,7 +113,14 @@ void line_markers_update(uint16_t normalized_readings[NUMBER_OF_MARKER_SENSORS])
             );
         } 
         else if (peak_active_marker == LINE_MARKER_RIGHT) {
-            current_data.right_markers_counter++;
+            // If it's the 1st right marker, count it unconditionally
+            if (current_data.right_markers_counter == 0) {
+                current_data.right_markers_counter++;
+            } 
+            // If we are waiting for the 2nd right marker (or beyond), enforce the left marker minimum
+            else if (current_data.left_markers_counter >= LINE_MARKER_MINIMUM_LEFT_MARKERS_TO_COUNT) {
+                current_data.right_markers_counter++;
+            }
         } 
         else if (peak_active_marker == LINE_MARKER_BOTH) {
             current_data.crossings_counter++;

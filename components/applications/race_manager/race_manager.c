@@ -6,6 +6,8 @@
 #include "esp_timer.h"
 #include "esp_cpu.h"
 #include "esp_rom_sys.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 // Project Includes
 #include "raven_log.h"
@@ -159,6 +161,8 @@ static void race_manager_cb(void *arg) {
 /* ========================================================================== */
 
 void race_manager_init(void) {
+    xTaskCreate(race_manager_commands_task, "race_manager_commands_task", 4096, NULL, 5, NULL);
+
     if (race_timer_handle == NULL) {
         const esp_timer_create_args_t timer_args = {
             .callback = &race_manager_cb,

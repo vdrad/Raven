@@ -408,6 +408,9 @@ static void *state_emergency_stop(void *args) {
  * @return NULL
  */
 static void *state_full_stop(void *args) {
+    motor_set_voltage(MOTOR_LEFT, 0);
+    motor_set_voltage(MOTOR_RIGHT, 0);
+    motor_coast(MOTOR_FAN);
     notification_play(&NOTIFY_PROFILE_EMERGENCY_STOP_STATE);
     return NULL;
 }

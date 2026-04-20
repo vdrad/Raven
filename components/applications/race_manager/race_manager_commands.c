@@ -5,7 +5,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#define TAG "RMG_CMD"
+#define TAG "RMG"
 
 typedef enum {
     RMG_CMD_UNKNOWN = 0,

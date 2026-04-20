@@ -26,7 +26,7 @@
 // Macros and Constants
 // ============================================================================
 
-#define TAG "ICM"
+#define TAG "IMU"
 
 // Default Configuration Constants
 #define ICM45686_CALIBRATION_SAMPLES    2000

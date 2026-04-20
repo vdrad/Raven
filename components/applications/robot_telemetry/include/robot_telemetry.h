@@ -9,7 +9,7 @@
 
 // 60 seconds at 100 Hz = 6000 samples. 
 // At 29 bytes per sample, this requires 174,000 bytes (~169 KB) of heap RAM.
-#define TELEMETRY_MAX_SAMPLES 6000 
+#define TELEMETRY_MAX_SAMPLES 5000 
 
 // The highly compressed 29-byte data frame
 typedef struct __attribute__((packed)) {
