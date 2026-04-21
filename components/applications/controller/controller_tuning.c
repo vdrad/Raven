@@ -19,7 +19,7 @@
 #define TAG "TUN"
 
 /* --- TUNER CONFIGURATIONS --- */
-#define ACCELERATION_RATE_M_S2  8.0f 
+#define ACCELERATION_RATE_M_S2  9.0f 
 #define SETPOINT_SPEED_M_S      2.0f 
 
 #define TUNER_DURATION_MS ((uint32_t)(4.0f * (SETPOINT_SPEED_M_S / ACCELERATION_RATE_M_S2) * 1000.0f)) 
