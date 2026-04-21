@@ -5,6 +5,7 @@
 /* ========================================================================== */
 
 #define RACE_MANAGER_DEFAULT_STRAIGHTLINE_SPEED_MPS  1.7f
+#define RACE_MANAGER_MAX_ROTATIONAL_SPEED_MPS        1.5f
 #define RACE_MANAGER_MAX_ROBOT_SPEED_MPS             4.0f
 
 #define RACE_MANAGER_DEFAULT_FAN_VOLTAGE             8.0f

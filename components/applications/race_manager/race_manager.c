@@ -75,21 +75,23 @@ static void race_manager_cb(void *arg) {
     line_reading_data_t line_data = line_reading_get_data();
     odometry_data_t     odom_data = odometry_get_data();
 
-    line_position_pid.current_reading = line_data.position.position;
+    // 1. Convert reading to meters
+    line_position_pid.current_reading = line_data.position.position / 1000.0f; 
+    
+    // 2. Compute PID to get a normalized effort (e.g., -1.0 to 1.0)
+    // Note: You will need to retune your Line PID constants to output smaller values
     pid_compute(&line_position_pid);
-    float position_feedback = line_position_pid.output;
+    float normalized_turn_effort = line_position_pid.output; 
 
+    // 4. Apply the scale factor
+    float speed_difference_mps = normalized_turn_effort * RACE_MANAGER_MAX_ROTATIONAL_SPEED_MPS;
+
+    // 5. Apply to motor setpoints
     left_motor_pid.current_reading  = odom_data.velocity_left_m_s;
     right_motor_pid.current_reading = odom_data.velocity_right_m_s;
 
-    left_motor_pid.setpoint  = current_straightline_speed_mps - position_feedback;
-    right_motor_pid.setpoint = current_straightline_speed_mps + position_feedback;
-
-    pid_compute(&left_motor_pid);
-    pid_compute(&right_motor_pid);
-
-    motor_set_voltage(MOTOR_LEFT, left_motor_pid.output);
-    motor_set_voltage(MOTOR_RIGHT, right_motor_pid.output);
+    left_motor_pid.setpoint  = current_straightline_speed_mps - speed_difference_mps;
+    right_motor_pid.setpoint = current_straightline_speed_mps + speed_difference_mps;
     
     // A. Check for Disaster (Global Override)
     if (line_data.position.robot_lost == true && 
@@ -170,9 +172,6 @@ void race_manager_init(void) {
         };
         esp_timer_create(&timer_args, &race_timer_handle);
     }
-
-    line_position_pid.max_output =  RACE_MANAGER_MAX_ROBOT_SPEED_MPS;
-    line_position_pid.min_output = -RACE_MANAGER_MAX_ROBOT_SPEED_MPS;
 
     RAVEN_LOGI(TAG, "Initialized successfully.");
 }

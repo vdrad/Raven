@@ -28,9 +28,9 @@
 
 /* --- GLOBAL PID INSTANCES --- */
 pid_context_t line_position_pid = {
-    .kP                 = 0.0286f,      
+    .kP                 = 0.0f,      
     .kI                 = 0.0f,           
-    .kD                 = 0.000286f,               
+    .kD                 = 0.0f,               
     .bias               = 0.0f,             
 
     .ff_coef            = 0.0,
@@ -44,8 +44,8 @@ pid_context_t line_position_pid = {
     .integral_sum       = 0.0f,
     .max_integral_sum   = 0.0f,
 
-    .max_output         = 0.0f,      
-    .min_output         = 0.0f,           
+    .max_output         = 1.0f,      
+    .min_output         = -1.0f,           
 };
 
 pid_context_t right_motor_pid = {
