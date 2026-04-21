@@ -402,9 +402,16 @@ void ICM45686_init(void) {
 
 void ICM45686_get_data(icm45686_data_t *out_data) {
     if (!initialized) {
-        raven_comm_send_message(TAG, "Error: Cannot get data, IMU not initialized!");
+        static uint32_t last_print_time = 0; 
+        uint32_t current_time = xTaskGetTickCount();
+        
+        if (current_time - last_print_time > pdMS_TO_TICKS(1000)) {
+            raven_comm_send_message(TAG, "Error: Cannot get data, IMU not initialized!");
+            last_print_time = current_time;
+        }
         return;
     }
+
     if (out_data == NULL) {
         raven_comm_send_message(TAG, "Error: Null pointer provided for get_data!");
         return;
@@ -433,6 +440,10 @@ void ICM45686_get_data(icm45686_data_t *out_data) {
     
     // Temperature Conversion (Datasheet formula)
     out_data->temp = ((float)raw.temp / 128.0f) + 25.0f;
+}
+
+bool ICM45686_is_initialized(void) {
+    return initialized;
 }
 
 void ICM45686_peripheral_validation(void) {

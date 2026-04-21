@@ -97,6 +97,8 @@ void ICM45686_init(void);
  */
 void ICM45686_get_data(icm45686_data_t *out_data);
 
+bool ICM45686_is_initialized(void);
+
 /**
  * @brief Reads data and prints it via the communication system for validation.
  */

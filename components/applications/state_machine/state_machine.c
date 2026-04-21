@@ -19,6 +19,7 @@
 #include "freertos/task.h"
 #include "nvs.h"
 #include "nvs_flash.h"
+#include "esp_task_wdt.h"
 
 // Project-specific includes
 #include "raven_log.h"
@@ -236,6 +237,12 @@ void state_machine_init(void) {
     }
     ESP_ERROR_CHECK(ret);
 
+    // Just to be sure that if we reset the board, motors will stop
+    motor_init(); 
+    motor_set_voltage(MOTOR_LEFT, 0);
+    motor_set_voltage(MOTOR_RIGHT, 0);
+    motor_coast(MOTOR_FAN);
+
     // Initialize tasks for failsafe and background command listening
     xTaskCreate(state_machine_task, "sma_task", 4096, NULL, 5, &state_machine_task_handle);
     xTaskCreate(state_machine_commands_task, "sma_cmd_task", 2048, NULL, 4, &state_machine_commands_task_handle);
@@ -272,7 +279,6 @@ static void *state_wait_user_connection(void *args) {
 static void *state_initialization(void *args) {
     notifications_init();
     battery_sensor_init();
-    motor_init();
     odometry_init();
     controller_init();
     line_reading_init();
@@ -301,6 +307,14 @@ static void *state_configuration(void *args) {
 static void *state_line_calibration(void *args) {
     line_reading_calibrate();
     vTaskDelay(pdMS_TO_TICKS(800)); // Give time to notifications
+
+    // SAFETY CHECK: Do not arm if IMU is offline
+    if (!ICM45686_is_initialized()) {
+        raven_comm_send_message(TAG, "Arming Aborted: IMU offline!");
+        REQUEST_STATE(state_full_stop);
+        return NULL;
+    }
+
     REQUEST_STATE(state_armed_entry);
     return NULL;
 }
@@ -563,6 +577,9 @@ static void state_machine_task(void *pvParameters) {
 static void state_machine_commands_task(void *pvParameters) {
     char received_cmd[RAVEN_COMM_MAX_PAYLOAD_LEN];
 
+    // Subscribe this task to the Task Watchdog Timer
+    esp_task_wdt_add(NULL);
+
     for (;;) {
         // Elegantly checks the central mailbox for new messages
         if (raven_comm_check_new_message(CMD_STATE_MACHINE, received_cmd)) {
@@ -600,7 +617,10 @@ static void state_machine_commands_task(void *pvParameters) {
                     break;
             }
         }
+
+        esp_task_wdt_reset();
         vTaskDelay(pdMS_TO_TICKS(STATE_MACHINE_REFRESH_RATE_MS));
     }
+    esp_task_wdt_delete(NULL);
     vTaskDelete(NULL);
 }
