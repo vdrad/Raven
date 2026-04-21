@@ -15,15 +15,16 @@
 // --- Patterns ---
 typedef enum {
     NOTIFY_PATTERN_OFF = 0,
-    NOTIFY_PATTERN_HOLD,               // Does nothing, preserves current LED state
-    NOTIFY_PATTERN_BREATHER,           // Fades side bars in and out smoothly
-    NOTIFY_PATTERN_EXHAUSTS_SPOOL,     // Flickers exhausts, turns solid, rising pitch
-    NOTIFY_PATTERN_SWEEP_TO_CENTER,    // Outer wings collapse to center
-    NOTIFY_PATTERN_SWEEP_TO_EDGES,     // Center bursts to outer wings
-    NOTIFY_PATTERN_BLINK_EDGES,        // Blinks outermost LEDs
-    NOTIFY_PATTERN_BLINK_EXHAUSTS,     // Blinks exhaust LEDs
-    NOTIFY_PATTERN_GAUGE,              // Progress bar
-    NOTIFY_PATTERN_SOLID_ALL           // All LEDs solid (utility)
+    NOTIFY_PATTERN_HOLD,                   // Does nothing, preserves current LED state
+    NOTIFY_PATTERN_BREATHER,               // Fades side bars in and out smoothly
+    NOTIFY_PATTERN_EXHAUSTS_SPOOL,         // Flickers exhausts, turns solid, rising pitch
+    NOTIFY_PATTERN_SWEEP_TO_CENTER,        // Outer wings collapse to center
+    NOTIFY_PATTERN_SWEEP_TO_EDGES,         // Center bursts to outer wings
+    NOTIFY_PATTERN_SWEEP_TO_EDGES_SINGLE,  // Center bursts to outer wings one LED at each side
+    NOTIFY_PATTERN_BLINK_EDGES,            // Blinks outermost LEDs
+    NOTIFY_PATTERN_BLINK_EXHAUSTS,         // Blinks exhaust LEDs
+    NOTIFY_PATTERN_GAUGE,                  // Progress bar
+    NOTIFY_PATTERN_SOLID_ALL               // All LEDs solid (utility)
 } notification_pattern_t;
 
 #define NOTIFY_INFINITE -1

@@ -167,6 +167,22 @@ static void notifications_task(void *pvParameters) {
                 break;
             }
 
+            case NOTIFY_PATTERN_SWEEP_TO_EDGES_SINGLE: {
+                rgb_led_clear();
+                if (req.base_tone_hz > 0) buzzer_play(req.base_tone_hz, 5 * req.speed_ms);
+                for (int step = 0; step < 9; step++) {
+                    rgb_led_clear();
+                    rgb_led_set_color(led_map[9 - step], req.color);
+                    rgb_led_set_color(led_map[10 + step], req.color);
+                    rgb_led_show();
+
+                    vTaskDelay(pdMS_TO_TICKS(req.speed_ms));
+                }
+                if(!req.freeze_at_end) { rgb_led_clear(); rgb_led_show(); }
+                vTaskDelay(pdMS_TO_TICKS(500));
+                break;
+            }
+
             case NOTIFY_PATTERN_SWEEP_TO_CENTER: {
                 rgb_led_clear();
                 // Sweep from edges (1 and 18) to center (9 and 10)
