@@ -14,7 +14,7 @@
 // Define your different acceleration profiles
 #define RACE_MANAGER_DEFAULT_ROBOT_ACCELERATION_MPS2 8.0f
 #define RACE_MANAGER_SLOW_ACCELERATION_MPS2          5.0f
-#define RACE_MANAGER_MAX_JERK_MPS3 30.0f
+#define RACE_MANAGER_MAX_JERK_MPS3 100.0f
 
 typedef enum {
     RACE_STATUS_PRE_START_ZONE, // Inside the start-finish region

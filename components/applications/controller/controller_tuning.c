@@ -20,14 +20,14 @@
 
 /* --- TUNER CONFIGURATIONS --- */
 #define ACCELERATION_RATE_M_S2  8.0f 
-#define SETPOINT_SPEED_M_S      3.0f 
+#define SETPOINT_SPEED_M_S      2.0f 
 
 #define TUNER_DURATION_MS ((uint32_t)(4.0f * (SETPOINT_SPEED_M_S / ACCELERATION_RATE_M_S2) * 1000.0f)) 
 #define LOOP_PERIOD_US    1000
 #define TOTAL_SAMPLES     (uint32_t)(TUNER_DURATION_MS / (LOOP_PERIOD_US / 1000.0f))
 
 // Max number of PIDs you can tune at the same time (e.g., Left, Right, Yaw)
-#define MAX_SIMULTANEOUS_PIDS 3
+#define MAX_SIMULTANEOUS_PIDS 2
 
 /* --- 1. GLOBAL TUNER STATE --- */
 /**
@@ -57,6 +57,9 @@ static void (*tuner_stop_cb)(void) = NULL;
  * @brief Hardware timer callback that executes the high-frequency tuning loop.
  */
 static void pid_tuner_timer_callback(void* arg) {
+    // --- 0. CAPTURE TIMESTAMP IMMEDIATELY ---
+    // Do this before any math or sensor reads to avoid FreeRTOS execution time jitter
+    int64_t current_timestamp = esp_timer_get_time();
     
     // --- TRAPEZOIDAL PROFILE GENERATOR ---
     float current_setpoint = 0.0f;
@@ -90,7 +93,8 @@ static void pid_tuner_timer_callback(void* arg) {
 
     // Step 2: Save the snapshot of ALL tracked PIDs into the heap buffer
     if (tuner_current_sample < TOTAL_SAMPLES && tuner_log_buffer != NULL) {
-        tuner_log_buffer[tuner_current_sample].timestamp_us = esp_timer_get_time();
+        // Use the jitter-free timestamp we captured at the exact start of the function!
+        tuner_log_buffer[tuner_current_sample].timestamp_us = current_timestamp;
         
         for (uint8_t i = 0; i < tuner_active_pids_count; i++) {
             tuner_log_buffer[tuner_current_sample].reading[i]      = tuner_active_pids[i]->current_reading;

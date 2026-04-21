@@ -284,7 +284,7 @@ static void *state_initialization(void *args) {
     line_reading_init();
     ICM45686_init();
     race_manager_init();
-    robot_telemetry_init();
+    // robot_telemetry_init();
 
     raven_comm_send_message(TAG, "All devices initialized.\n");
     REQUEST_STATE(state_configuration);
