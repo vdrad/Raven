@@ -277,7 +277,7 @@ static void *state_wait_user_connection(void *args) {
  * @return NULL
  */
 static void *state_initialization(void *args) {
-    notifications_init();
+    // notifications_init();
     battery_sensor_init();
     odometry_init();
     controller_init();
