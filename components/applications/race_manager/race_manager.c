@@ -47,56 +47,23 @@ static float current_acceleration_mps2 = RACE_MANAGER_DEFAULT_ROBOT_ACCELERATION
 // Tracks the start time of the race in microseconds
 static int64_t race_start_time_us = 0;
 
-static float current_actual_accel_mps2 = 0.0f; // Track real-time acceleration
-
 /* ========================================================================== */
 /* PRIVATE FUNCTION IMPLEMENTATIONS                                           */
 /* ========================================================================== */
 
 static void straightline_speed_manager(void) {
-    float dt = (float)RACE_MANAGER_REFRESH_RATE_MS / 1000.0f;
-    float jerk_step = RACE_MANAGER_MAX_JERK_MPS3 * dt;
-    
-    float vel_error = target_straightline_speed_mps - current_straightline_speed_mps;
-    
-    // 1. KINEMATIC LOOK-AHEAD
-    // If we start reducing our acceleration to zero right now at MAX_JERK, 
-    // how much extra velocity will we naturally gain before acceleration hits 0?
-    // Formula: v_gain = (accel^2) / (2 * jerk)
-    float vel_gain_if_stopping = (current_actual_accel_mps2 * fabsf(current_actual_accel_mps2)) / (2.0f * RACE_MANAGER_MAX_JERK_MPS3);
-    
-    float desired_accel = 0.0f;
-    
-    // 2. DECIDE DESIRED ACCELERATION
-    if (vel_error > 0.0f) {
-        // We need to speed up. Are we close enough that we need to ease off the gas?
-        if (vel_error <= vel_gain_if_stopping) {
-            desired_accel = 0.0f; // Coast down the acceleration to prevent overshoot
-        } else {
-            desired_accel = current_acceleration_mps2; // Full gas
-        }
-    } else if (vel_error < 0.0f) {
-        // We need to slow down. Are we close enough to ease off the brakes?
-        if (vel_error >= vel_gain_if_stopping) { 
-            desired_accel = 0.0f; // Coast down the braking
-        } else {
-            desired_accel = -current_acceleration_mps2; // Full brakes
-        }
-    }
+    float error = target_straightline_speed_mps - current_straightline_speed_mps;
+    float current_step = GET_ACCEL_PER_TICK(current_acceleration_mps2);
 
-    // 3. APPLY JERK LIMIT (Ramp the actual acceleration)
-    float accel_error = desired_accel - current_actual_accel_mps2;
-    
-    if (fabsf(accel_error) <= jerk_step) {
-        current_actual_accel_mps2 = desired_accel;
-    } else if (accel_error > 0.0f) {
-        current_actual_accel_mps2 += jerk_step;
-    } else {
-        current_actual_accel_mps2 -= jerk_step;
+    if (fabsf(error) <= current_step) {
+        current_straightline_speed_mps = target_straightline_speed_mps;
+    } 
+    else if (error > 0.0f) {
+        current_straightline_speed_mps += current_step;
+    } 
+    else if (error < 0.0f) {
+        current_straightline_speed_mps -= current_step;
     }
-    
-    // 4. INTEGRATE TO VELOCITY
-    current_straightline_speed_mps += (current_actual_accel_mps2 * dt);
 }
 
 static void race_manager_cb(void *arg) {
@@ -165,7 +132,7 @@ static void race_manager_cb(void *arg) {
                 float lap_time_s = (float)(esp_timer_get_time() - race_start_time_us) / 1000000.0f;
                 
                 target_straightline_speed_mps = 0.0f;
-                current_acceleration_mps2 = RACE_MANAGER_SLOW_ACCELERATION_MPS2;
+                current_acceleration_mps2 = RACE_MANAGER_SLOWDOWN_ACCELERATION_MPS2;
 
                 raven_comm_send_message(TAG, "Finish line crossed!\nTrack length: %.2fm\nLap Time: %.3fs.\nAverage Velocity: %.1f m/s", 
                                         odom_data.distance_traveled_robot_m, lap_time_s, odom_data.distance_traveled_robot_m/lap_time_s);
