@@ -6,7 +6,7 @@
 
 #define RACE_MANAGER_DEFAULT_STRAIGHTLINE_SPEED_MPS  1.7f
 #define RACE_MANAGER_MAX_ROTATIONAL_SPEED_MPS        1.5f
-#define RACE_MANAGER_MAX_ROBOT_SPEED_MPS             4.0f
+#define RACE_MANAGER_MAX_ROBOT_SPEED_MPS             7.8f
 
 #define RACE_MANAGER_DEFAULT_FAN_VOLTAGE             8.0f
 #define RACE_MANAGER_DEFAULT_FAN_ACCELERATION_VPS    1.0f
@@ -14,6 +14,7 @@
 // Define your different acceleration profiles
 #define RACE_MANAGER_DEFAULT_ROBOT_ACCELERATION_MPS2 8.0f
 #define RACE_MANAGER_SLOW_ACCELERATION_MPS2          5.0f
+#define RACE_MANAGER_MAX_JERK_MPS3 30.0f
 
 typedef enum {
     RACE_STATUS_PRE_START_ZONE, // Inside the start-finish region

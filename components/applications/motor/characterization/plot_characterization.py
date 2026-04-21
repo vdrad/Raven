@@ -21,13 +21,13 @@ TEXT_COLOR = "#E0E0E0"    # White for Intermediate Values
 LEFT_COLOR = "#742BB8"  
 RIGHT_COLOR = "#742BB8" 
 
-# Typography - Increased sizes for better readability
+# Typography
 TITLE_FONT = ("SAKURATA", 20, "bold") 
 SUBTITLE_FONT = ("JetBrains Mono", 12, "bold")
 LBL_FONT = ("Titillium Web", 14, "bold")      
 VAL_FONT = ("JetBrains Mono", 32, "bold")     
 PID_VAL_FONT = ("JetBrains Mono", 24, "bold") 
-MONO_FONT = ("JetBrains Mono", 14)            
+MONO_FONT = ("JetBrains Mono", 13)            
 
 class DataProcessor:
     """Processes characterization logs and extracts steady-state & transient metrics."""
@@ -40,7 +40,6 @@ class DataProcessor:
         
         with open(filepath, 'r') as file:
             for line in file:
-                # Automatically recognize both "MCH: " and "[MCH] " log formats
                 match = re.search(r'(MCH:\s*|\[MCH\]\s*)', line)
                 if match:
                     clean_line = line[match.end():].strip()
@@ -67,9 +66,13 @@ class DataProcessor:
                 elif current_voltage is not None and clean_line[0].isdigit():
                     parts = clean_line.split(',')
                     if len(parts) >= 4:
-                        data_rows.append(parts)
+                        # Handle potential 5-column CSV (with applied_v) without crashing
+                        if len(parts) == 5:
+                            # If applied_v is index 2, Vel_Left is 3, Vel_Right is 4
+                            data_rows.append([parts[0], parts[1], parts[3], parts[4]])
+                        else:
+                            data_rows.append(parts[:4])
                         
-        # Failsafe in case the final "--- CSV END ---" is missing from the file
         if current_voltage is not None and data_rows:
             df = pd.DataFrame(data_rows, columns=['Point', 'DeltaTime_us', 'Vel_Left', 'Vel_Right'])
             df = df.astype({'DeltaTime_us': float, 'Vel_Left': float, 'Vel_Right': float})
@@ -107,6 +110,30 @@ class DataProcessor:
         return Kv, Ks
 
     @staticmethod
+    def get_kinematic_limits(df):
+        """
+        Calculates maximum physical acceleration and jerk using smoothed derivatives 
+        to filter out encoder quantization noise.
+        """
+        # Get Delta Time in seconds (default to 10ms if 0 to prevent division by zero)
+        dt_s = df['DeltaTime_us'].replace(0, 10000) / 1e6
+        
+        # Calculate Acceleration (dv/dt) with a rolling window (e.g. 100ms)
+        accel_l = (df['Vel_Left'].diff() / dt_s).rolling(window=10, min_periods=1).mean()
+        accel_r = (df['Vel_Right'].diff() / dt_s).rolling(window=10, min_periods=1).mean()
+        
+        # Calculate Jerk (da/dt)
+        jerk_l = (accel_l.diff() / dt_s).rolling(window=10, min_periods=1).mean()
+        jerk_r = (accel_r.diff() / dt_s).rolling(window=10, min_periods=1).mean()
+        
+        return {
+            'accel_l_max': accel_l.max() if not pd.isna(accel_l.max()) else 0.0,
+            'accel_r_max': accel_r.max() if not pd.isna(accel_r.max()) else 0.0,
+            'jerk_l_max': jerk_l.max() if not pd.isna(jerk_l.max()) else 0.0,
+            'jerk_r_max': jerk_r.max() if not pd.isna(jerk_r.max()) else 0.0
+        }
+
+    @staticmethod
     def get_transient_metrics(datasets, steady_df, motor_choice):
         col_name = f"Vel_{motor_choice.capitalize()}"
         
@@ -119,7 +146,6 @@ class DataProcessor:
         if steady_vel_max < 0.1: 
             return 0.0, 0.0, max_volt, 0.0
             
-        # 1. Settling Time & Max Accel (Based on max voltage)
         threshold = 0.95 * steady_vel_max
         crossed_indices = df_max.index[df_max[col_name] >= threshold].tolist()
         settling_time = df_max.loc[crossed_indices[0], 'Time_s'] if crossed_indices else df_max['Time_s'].iloc[-1]
@@ -129,11 +155,9 @@ class DataProcessor:
         dv_array = np.gradient(df_max[col_name])
         max_accel = np.max(dv_array / dt_array)
         
-        # 2. Average Tm (Time Constant - 63.2%) across all valid voltages
         tm_list = []
         for v, df in datasets.items():
             s_vel = steady_df[steady_df['voltage'] == v][motor_choice].values[0]
-            # Ignore low voltages heavily affected by stiction/deadband
             if s_vel > 0.1: 
                 thresh_tm = 0.632 * s_vel
                 crossed_tm = df.index[df[col_name] >= thresh_tm].tolist()
@@ -159,10 +183,14 @@ class CharacterizationDashboard(ctk.CTk):
         self.current_motor = ctk.StringVar(value="Left")
         self.last_filepath = None 
         
-        # Voltage Curve Selection
+        # Absolute Kinematic Limits
+        self.max_accel_left = 0.0
+        self.max_jerk_left = 0.0
+        self.max_accel_right = 0.0
+        self.max_jerk_right = 0.0
+        
         self.voltage_vars = {}
         
-        # Internals for real-time PID estimation
         self.current_tm = 0.0
         self.current_km = 0.0
         
@@ -199,10 +227,9 @@ class CharacterizationDashboard(ctk.CTk):
         self.main_container = ctk.CTkFrame(self, fg_color=BG_COLOR)
         self.main_container.pack(fill="both", expand=True, padx=15, pady=15)
         
-        # --- CURVE SELECTOR (NEW) ---
+        # --- CURVE SELECTOR ---
         self.filter_frame = ctk.CTkFrame(self.main_container, fg_color=PANEL_COLOR, corner_radius=8, border_width=1, border_color=BORDER_COLOR)
         self.filter_frame.pack(side="top", fill="x", pady=(0, 10))
-        # Initial empty label, populated in load_file
         self.filter_label = ctk.CTkLabel(self.filter_frame, text="PLOT SELECTOR: Import log to see available curves.", font=SUBTITLE_FONT, text_color="#777777")
         self.filter_label.pack(side="left", padx=15, pady=10)
 
@@ -218,7 +245,7 @@ class CharacterizationDashboard(ctk.CTk):
         self.canvas.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=10)
         
         # --- BOTTOM TELEMETRY AREA (4 BOXES) ---
-        self.bottom_frame = ctk.CTkFrame(self.main_container, fg_color="transparent", height=160)
+        self.bottom_frame = ctk.CTkFrame(self.main_container, fg_color="transparent", height=190)
         self.bottom_frame.pack(side="bottom", fill="x")
         
         # BOX 1: PID TARGET PROFILE
@@ -306,14 +333,13 @@ class CharacterizationDashboard(ctk.CTk):
         self.box_export = ctk.CTkFrame(self.bottom_frame, fg_color=PANEL_COLOR, corner_radius=8, border_width=2, border_color=BORDER_COLOR)
         self.box_export.pack(side="left", fill="both", expand=True, padx=(5, 0))
         
-        ctk.CTkLabel(self.box_export, text="TELEMETRY EXPORT", font=SUBTITLE_FONT, text_color="#777777").pack(anchor="w", padx=15, pady=(10, 5))
+        ctk.CTkLabel(self.box_export, text="C CODE EXPORT", font=SUBTITLE_FONT, text_color="#777777").pack(anchor="w", padx=15, pady=(10, 5))
         
-        self.eq_display = ctk.CTkTextbox(self.box_export, font=MONO_FONT, text_color="#00FF00", fg_color="#0A0A0A", border_width=1, border_color="#333", height=85)
+        self.eq_display = ctk.CTkTextbox(self.box_export, font=MONO_FONT, text_color="#00FF00", fg_color="#0A0A0A", border_width=1, border_color="#333", height=150)
         self.eq_display.pack(fill="both", expand=True, padx=15, pady=(0, 15))
         self.eq_display.insert("1.0", "// Waiting for data...")
         self.eq_display.configure(state="disabled")
 
-    # SHARED LOAD LOGIC
     def load_file(self, path):
         try:
             self.datasets = self.processor.parse_log_file(path)
@@ -325,6 +351,19 @@ class CharacterizationDashboard(ctk.CTk):
             self.last_filepath = path
             self.refresh_btn.configure(state="normal")
             
+            # --- CALCULATE GLOBAL KINEMATIC LIMITS ---
+            self.max_accel_left = 0.0
+            self.max_jerk_left = 0.0
+            self.max_accel_right = 0.0
+            self.max_jerk_right = 0.0
+            
+            for df in self.datasets.values():
+                kin = self.processor.get_kinematic_limits(df)
+                self.max_accel_left = max(self.max_accel_left, kin['accel_l_max'])
+                self.max_jerk_left = max(self.max_jerk_left, kin['jerk_l_max'])
+                self.max_accel_right = max(self.max_accel_right, kin['accel_r_max'])
+                self.max_jerk_right = max(self.max_jerk_right, kin['jerk_r_max'])
+            
             # --- POPULATE PLOT SELECTOR ---
             for widget in self.filter_frame.winfo_children():
                 widget.destroy()
@@ -333,14 +372,13 @@ class CharacterizationDashboard(ctk.CTk):
             ctk.CTkLabel(self.filter_frame, text="VISIBLE CURVES:", font=SUBTITLE_FONT, text_color="#777777").pack(side="left", padx=15, pady=10)
             
             for volt in sorted(self.datasets.keys()):
-                var = ctk.BooleanVar(value=True) # Default checked
+                var = ctk.BooleanVar(value=True)
                 self.voltage_vars[volt] = var
                 cb = ctk.CTkCheckBox(self.filter_frame, text=f"{volt}V", variable=var, 
                                      command=self.update_plots, font=SUBTITLE_FONT, 
                                      text_color=TEXT_COLOR, fg_color=ACCENT_COLOR, hover_color="#6A1B9A", 
                                      checkbox_width=20, checkbox_height=20)
                 cb.pack(side="left", padx=10, pady=10)
-            # ------------------------------
             
             self.update_plots()
         except Exception as e:
@@ -384,18 +422,53 @@ class CharacterizationDashboard(ctk.CTk):
         except ValueError:
             self.lbl_kp.configure(text="--.---")
             self.lbl_ki.configure(text="--.---")
+            
+        self.update_code_snippet()
+
+    def update_code_snippet(self):
+        motor_choice = self.current_motor.get().lower()
+        motor_prefix = "LEFT" if motor_choice == "left" else "RIGHT"
+        
+        active_max_accel = self.max_accel_left if motor_choice == "left" else self.max_accel_right
+        active_max_jerk = self.max_jerk_left if motor_choice == "left" else self.max_jerk_right
+        
+        kp_val = self.lbl_kp.cget("text")
+        ki_val = self.lbl_ki.cget("text")
+        
+        # Calculate feedforward again just for the output
+        vols = self.steady_df['voltage'].values if self.steady_df is not None else []
+        vels = self.steady_df[motor_choice].values if self.steady_df is not None else []
+        Kv, Ks = self.processor.calculate_feedforward(vols, vels) if len(vols) > 0 else (0,0)
+
+        code_str = (
+            f"// --- {motor_prefix} MOTOR PROFILE ---\n"
+            f"// FF Constants: V = ({Kv:.4f} * vel) + {Ks:.4f}\n"
+            f"#define MOTOR_{motor_prefix}_KV      {Kv:.4f}f\n"
+            f"#define MOTOR_{motor_prefix}_KS      {Ks:.4f}f\n"
+            f"#define MOTOR_{motor_prefix}_TM      {self.current_tm:.4f}f\n\n"
+            f"// --- KINEMATIC LIMITS (S-CURVE) ---\n"
+            f"// Absolute max derived from characterization\n"
+            f"#define RACE_MAX_ACCEL_{motor_prefix}_MPS2 {active_max_accel:.2f}f\n"
+            f"#define RACE_MAX_JERK_{motor_prefix}_MPS3  {active_max_jerk:.2f}f\n\n"
+            f"// --- PID TUNING SUGGESTIONS ---\n"
+            f"#define PID_{motor_prefix}_KP        {kp_val if kp_val != '--.---' else '0.0000'}f\n"
+            f"#define PID_{motor_prefix}_KI        {ki_val if ki_val != '--.---' else '0.0000'}f\n"
+        )
+        
+        self.eq_display.configure(state="normal")
+        self.eq_display.delete("1.0", "end")
+        self.eq_display.insert("1.0", code_str)
+        self.eq_display.configure(state="disabled")
 
     def update_plots(self, *args):
         if not self.datasets or self.steady_df is None:
             return
             
-        # Figure out which voltages are checked by the user
         active_voltages = [v for v, var in self.voltage_vars.items() if var.get()]
         
         self.ax_time.clear()
         self.ax_fit.clear()
         
-        # Setup Plot Styling
         for ax in [self.ax_time, self.ax_fit]:
             ax.set_facecolor(BG_COLOR)
             ax.tick_params(colors=TEXT_COLOR)
@@ -410,13 +483,11 @@ class CharacterizationDashboard(ctk.CTk):
         self.ax_fit.set_xlabel("Velocity (m/s)", color="#888888")
         self.ax_fit.set_ylabel("Applied Voltage (V)", color="#888888")
 
-        # If user unchecked everything, redraw empty graphs and reset labels
         if not active_voltages:
             self.canvas.draw()
             self.clear_dashboard_labels()
             return
             
-        # Filter Datasets based on selection
         active_datasets = {v: self.datasets[v] for v in active_voltages}
         active_steady_df = self.steady_df[self.steady_df['voltage'].isin(active_voltages)]
 
@@ -425,25 +496,21 @@ class CharacterizationDashboard(ctk.CTk):
         steady_col = motor_choice
         base_color = LEFT_COLOR if motor_choice == "left" else RIGHT_COLOR
         
-        # 1. Update Core Metrics using ONLY the filtered data
         settling_time, max_accel, max_volt, avg_tm = self.processor.get_transient_metrics(active_datasets, active_steady_df, motor_choice)
-        recommended_accel = max_accel * 0.75 
         
+        # UI Updates
         self.val_max_accel.configure(text=f"{max_accel:05.2f}", text_color=TEXT_COLOR)
         self.val_tm.configure(text=f"{avg_tm:05.3f}", text_color=ACCENT_COLOR) 
-        self.val_rec_accel.configure(text=f"{recommended_accel:05.2f}", text_color=TEXT_COLOR)
+        self.val_rec_accel.configure(text=f"{max_accel * 0.75:05.2f}", text_color=TEXT_COLOR)
         self.val_settling.configure(text=f"{settling_time:05.3f}", text_color=TEXT_COLOR)
         
-        # 2. Assign consistent colors based on ORIGINAL full dataset length
         all_voltages = list(self.datasets.keys())
         pastel_neon_anchors = ["#5CFFD2", "#5CFFFF", "#5CB8FF", "#B85CFF", "#FF5CA8", "#FF8A5C", "#FFE65C"]
         custom_cmap = LinearSegmentedColormap.from_list("pastel_neon", pastel_neon_anchors)
         colormap = custom_cmap(np.linspace(0, 1, len(all_voltages)))
         
-        # Dictionary to map voltage -> specific color
         color_map = {v: colormap[idx] for idx, v in enumerate(all_voltages)}
         
-        # Plot Time Series Curves
         for volt, df in active_datasets.items():
             color = color_map[volt]
             self.ax_time.plot(df['Time_s'], df[col_name], color=color, linewidth=2, label=f"{volt}V")
@@ -454,7 +521,6 @@ class CharacterizationDashboard(ctk.CTk):
         self.ax_time.set_title(f"Step Responses ({motor_choice.capitalize()})", color=TEXT_COLOR, fontsize=12, pad=10)
         self.ax_time.legend(facecolor=PANEL_COLOR, edgecolor='#333333', labelcolor=TEXT_COLOR, loc='upper left', fontsize=8)
 
-        # Plot Feedforward Line
         vols = active_steady_df['voltage'].values
         vels = active_steady_df[steady_col].values
         
@@ -463,9 +529,8 @@ class CharacterizationDashboard(ctk.CTk):
         
         self.current_tm = avg_tm
         self.current_km = (1.0 / Kv) if Kv != 0 else 0.0001
-        self.recalc_pid()
+        self.recalc_pid() # This handles updating the code snippet as well
         
-        # Draw fit line only if enough points exist
         if Kv != 0.0:
             max_vel_measured = max(vels) if len(vels) > 0 else 1.0
             fit_vels = np.linspace(0, max_vel_measured, 100)
@@ -477,19 +542,6 @@ class CharacterizationDashboard(ctk.CTk):
         
         self.fig.tight_layout()
         self.canvas.draw()
-        
-        # 3. Update Code Snippet
-        self.eq_display.configure(state="normal")
-        self.eq_display.delete("1.0", "end")
-        
-        motor_prefix = "LEFT" if motor_choice == "left" else "RIGHT"
-        code_str = (f"// --- {motor_prefix} MOTOR PROFILE ---\n"
-                    f"#define ACCEL_RATE_{motor_prefix}_M_S2 {recommended_accel:.2f}f\n"
-                    f"#define TIME_CONSTANT_{motor_prefix}_S {avg_tm:.5f}f\n"
-                    f"float {motor_choice}_ff = ({Kv:.5f}f * target_vel) + {Ks:.5f}f;")
-                    
-        self.eq_display.insert("1.0", code_str)
-        self.eq_display.configure(state="disabled")
 
 if __name__ == "__main__":
     ctk.set_appearance_mode("dark")

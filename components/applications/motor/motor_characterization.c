@@ -21,14 +21,14 @@
 /* ========================================================================== */
 
 // Duration of each test window in milliseconds
-#define CHAR_DURATION_MS 2000
+#define CHAR_DURATION_MS 1000
 
 // Sampling frequency (10000 us = 100 Hz)
 #define CHAR_LOOP_PERIOD_US 10000
 #define TOTAL_SAMPLES (uint32_t)(CHAR_DURATION_MS / (CHAR_LOOP_PERIOD_US / 1000.0f))
 
 // Array of voltages to be tested sequentially
-static const float test_voltages[] = {0.5f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f, 10.0f, 11.0f, 12.0f};
+static const float test_voltages[] = {0.5f,     1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f, 10.0f, 11.0f, 12.0f};
 static const uint8_t num_test_voltages = sizeof(test_voltages) / sizeof(test_voltages[0]);
 
 /* ========================================================================== */
