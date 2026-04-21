@@ -2,7 +2,7 @@
 
 #define BATTERY_3S 0
 #define BATTERY_4S 1
-#define CURRENT_BATTERY BATTERY_3S
+#define CURRENT_BATTERY BATTERY_4S
 
 // Define voltage thresholds based on the battery cell count
 #if CURRENT_BATTERY == BATTERY_3S
