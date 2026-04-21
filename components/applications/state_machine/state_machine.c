@@ -83,10 +83,10 @@ typedef enum {
 } state_machine_cmd_type_t;
 
 static const notification_config_t NOTIFY_PROFILE_ARMED_STATE = {
-    NOTIFY_PATTERN_BREATHER, 
+    NOTIFY_PATTERN_SWEEP_TO_EDGES_SINGLE, 
     COLOR_PURPLE, 
-    NOTE_REST, 
-    70, 
+    NOTE_A4, 
+    80, 
     1, 
     false,
     0
@@ -277,14 +277,14 @@ static void *state_wait_user_connection(void *args) {
  * @return NULL
  */
 static void *state_initialization(void *args) {
-    // notifications_init();
+    notifications_init();
     battery_sensor_init();
     odometry_init();
     controller_init();
     line_reading_init();
     ICM45686_init();
     race_manager_init();
-    // robot_telemetry_init();
+    robot_telemetry_init();
 
     raven_comm_send_message(TAG, "All devices initialized.\n");
     REQUEST_STATE(state_configuration);
