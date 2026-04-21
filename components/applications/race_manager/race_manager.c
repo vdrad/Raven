@@ -75,23 +75,26 @@ static void race_manager_cb(void *arg) {
     line_reading_data_t line_data = line_reading_get_data();
     odometry_data_t     odom_data = odometry_get_data();
 
-    // 1. Convert reading to meters
-    line_position_pid.current_reading = line_data.position.position / 1000.0f; 
-    
-    // 2. Compute PID to get a normalized effort (e.g., -1.0 to 1.0)
-    // Note: You will need to retune your Line PID constants to output smaller values
+    line_position_pid.current_reading = line_data.position.position / 1000.0f;
     pid_compute(&line_position_pid);
-    float normalized_turn_effort = line_position_pid.output; 
+    float position_feedback = line_position_pid.output;
 
-    // 4. Apply the scale factor
-    float speed_difference_mps = normalized_turn_effort * RACE_MANAGER_MAX_ROTATIONAL_SPEED_MPS;
-
-    // 5. Apply to motor setpoints
     left_motor_pid.current_reading  = odom_data.velocity_left_m_s;
     right_motor_pid.current_reading = odom_data.velocity_right_m_s;
 
-    left_motor_pid.setpoint  = current_straightline_speed_mps - speed_difference_mps;
-    right_motor_pid.setpoint = current_straightline_speed_mps + speed_difference_mps;
+    left_motor_pid.setpoint  = current_straightline_speed_mps - position_feedback;
+    right_motor_pid.setpoint = current_straightline_speed_mps + position_feedback;
+
+    if (left_motor_pid.setpoint  > RACE_MANAGER_MAX_ROBOT_SPEED_MPS)  left_motor_pid.setpoint  =  RACE_MANAGER_MAX_ROBOT_SPEED_MPS;
+    if (left_motor_pid.setpoint  < -RACE_MANAGER_MAX_ROBOT_SPEED_MPS) left_motor_pid.setpoint  = -RACE_MANAGER_MAX_ROBOT_SPEED_MPS;
+    if (right_motor_pid.setpoint > RACE_MANAGER_MAX_ROBOT_SPEED_MPS)  right_motor_pid.setpoint =  RACE_MANAGER_MAX_ROBOT_SPEED_MPS;
+    if (right_motor_pid.setpoint < -RACE_MANAGER_MAX_ROBOT_SPEED_MPS) right_motor_pid.setpoint = -RACE_MANAGER_MAX_ROBOT_SPEED_MPS;
+
+    pid_compute(&left_motor_pid);
+    pid_compute(&right_motor_pid);
+
+    motor_set_voltage(MOTOR_LEFT, left_motor_pid.output);
+    motor_set_voltage(MOTOR_RIGHT, right_motor_pid.output);
     
     // A. Check for Disaster (Global Override)
     if (line_data.position.robot_lost == true && 
@@ -105,6 +108,8 @@ static void race_manager_cb(void *arg) {
         target_straightline_speed_mps = 0.0f;
         current_straightline_speed_mps = 0.0f; 
     
+        robot_telemetry_record_frame();
+
         raven_comm_send_message(TAG, "Line lost. Dist: %.2fm | Vel: %.2fm/s", 
                                 odom_data.distance_traveled_robot_m, 
                                 odom_data.velocity_robot_m_s);
@@ -120,6 +125,7 @@ static void race_manager_cb(void *arg) {
                 
                 race_status = RACE_STATUS_RACING;
                 current_acceleration_mps2 = RACE_MANAGER_DEFAULT_ROBOT_ACCELERATION_MPS2;
+                target_straightline_speed_mps  = configured_straightline_speed_mps; 
 
                 raven_comm_send_message(TAG, "Start line crossed. Accelerating to %.1f m/s.", 
                                         target_straightline_speed_mps);
@@ -173,6 +179,9 @@ void race_manager_init(void) {
         esp_timer_create(&timer_args, &race_timer_handle);
     }
 
+    line_position_pid.max_output =  2.0f * RACE_MANAGER_MAX_ROBOT_SPEED_MPS;
+    line_position_pid.min_output = -2.0f * RACE_MANAGER_MAX_ROBOT_SPEED_MPS;
+
     RAVEN_LOGI(TAG, "Initialized successfully.");
 }
 
@@ -184,10 +193,12 @@ void race_manager_start(void) {
     if (is_timer_running) return;
 
     current_straightline_speed_mps = 0.0f;
-    target_straightline_speed_mps  = configured_straightline_speed_mps; 
+    target_straightline_speed_mps = 0.8;
     current_acceleration_mps2      = RACE_MANAGER_DEFAULT_ROBOT_ACCELERATION_MPS2;
     race_start_time_us             = 0;
     race_status                    = RACE_STATUS_PRE_START_ZONE;
+
+    line_position_pid.last_run_time_us = esp_timer_get_time();
 
     esp_timer_start_periodic(race_timer_handle, RACE_MANAGER_REFRESH_RATE_MS * 1000);
     is_timer_running = true;

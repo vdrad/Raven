@@ -28,7 +28,7 @@ void pid_compute(pid_context_t *pid) {
     // Throttle execution to a maximum of 1kHz to ensure stability
     if (dt_s <= 0.001f) {
         // Initialize timer on the very first run
-        if (pid->last_run_time_us == 0) pid->last_run_time_us = now_us;
+        if (pid->last_run_time_us == 0) pid->last_run_time_us = now_us; // deprecated by race_manager.c _start()?
         return; 
     }
 

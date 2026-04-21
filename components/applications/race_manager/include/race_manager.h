@@ -4,9 +4,8 @@
 /* MACROS & CONFIGURATIONS                                                    */
 /* ========================================================================== */
 
-#define RACE_MANAGER_DEFAULT_STRAIGHTLINE_SPEED_MPS  1.0f
-#define RACE_MANAGER_MAX_ROTATIONAL_SPEED_MPS        1.5f
-#define RACE_MANAGER_MAX_ROBOT_SPEED_MPS             7.8f
+#define RACE_MANAGER_DEFAULT_STRAIGHTLINE_SPEED_MPS  2.0f
+#define RACE_MANAGER_MAX_ROBOT_SPEED_MPS             7.0f
 
 #define RACE_MANAGER_DEFAULT_FAN_VOLTAGE             8.0f
 #define RACE_MANAGER_DEFAULT_FAN_ACCELERATION_VPS    1.0f
