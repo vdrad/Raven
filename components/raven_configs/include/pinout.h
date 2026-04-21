@@ -67,8 +67,8 @@
  * @{
  */
 // Left Motor
-#define LEFT_MOTOR_IN1_PIN      37
-#define LEFT_MOTOR_IN2_PIN      36
+#define LEFT_MOTOR_IN1_PIN      36
+#define LEFT_MOTOR_IN2_PIN      37
 
 // Right Motor
 #define RIGHT_MOTOR_IN1_PIN     16
