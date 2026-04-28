@@ -352,10 +352,13 @@ static void *state_warmup_run(void *args) {
     } 
     // At 1000ms, start the race!
     else if (warmup_timer_ms >= 1000) {
-        race_manager_start();
+        // race_manager_start();
+        motor_set_voltage(MOTOR_LEFT, 1.5f);
+        motor_set_voltage(MOTOR_RIGHT, 1.5f);
+        vTaskDelay(pdMS_TO_TICKS(300));
         REQUEST_STATE(state_racing);
     }
-
+    
     return NULL;
 }
 
@@ -366,6 +369,7 @@ static void *state_warmup_run(void *args) {
 static void *state_racing(void *args) {
     
     // NO WHILE LOOP! Executes once per 20ms tick and returns.
+    race_manager_start();
     race_manager_status_t race_status = race_manager_get_status();
 
     if (race_status == RACE_STATUS_COMPLETED) {

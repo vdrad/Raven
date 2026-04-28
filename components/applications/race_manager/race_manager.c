@@ -75,26 +75,32 @@ static void race_manager_cb(void *arg) {
     line_reading_data_t line_data = line_reading_get_data();
     odometry_data_t     odom_data = odometry_get_data();
 
-    line_position_pid.current_reading = line_data.position.position / 1000.0f;
+    line_position_pid.current_reading = line_data.position.position;
     pid_compute(&line_position_pid);
     float position_feedback = line_position_pid.output;
 
-    left_motor_pid.current_reading  = odom_data.velocity_left_m_s;
-    right_motor_pid.current_reading = odom_data.velocity_right_m_s;
+    // left_motor_pid.current_reading  = odom_data.velocity_left_m_s;
+    // right_motor_pid.current_reading = odom_data.velocity_right_m_s;
 
-    left_motor_pid.setpoint  = current_straightline_speed_mps - position_feedback;
-    right_motor_pid.setpoint = current_straightline_speed_mps + position_feedback;
+    float left_motor_output  = current_straightline_speed_mps - position_feedback;
+    float right_motor_output = current_straightline_speed_mps + position_feedback;
+    // left_motor_pid.setpoint  = current_straightline_speed_mps - position_feedback;
+    // right_motor_pid.setpoint = current_straightline_speed_mps + position_feedback;
 
-    if (left_motor_pid.setpoint  > RACE_MANAGER_MAX_ROBOT_SPEED_MPS)  left_motor_pid.setpoint  =  RACE_MANAGER_MAX_ROBOT_SPEED_MPS;
-    if (left_motor_pid.setpoint  < -RACE_MANAGER_MAX_ROBOT_SPEED_MPS) left_motor_pid.setpoint  = -RACE_MANAGER_MAX_ROBOT_SPEED_MPS;
-    if (right_motor_pid.setpoint > RACE_MANAGER_MAX_ROBOT_SPEED_MPS)  right_motor_pid.setpoint =  RACE_MANAGER_MAX_ROBOT_SPEED_MPS;
-    if (right_motor_pid.setpoint < -RACE_MANAGER_MAX_ROBOT_SPEED_MPS) right_motor_pid.setpoint = -RACE_MANAGER_MAX_ROBOT_SPEED_MPS;
+    if (left_motor_output  > 12.0f) left_motor_output   =  12.0f;
+    if (left_motor_output  < -12.0f) left_motor_output  = -12.0f;
+    if (right_motor_output  > 12.0f)  right_motor_output   =  12.0f;
+    if (right_motor_output  < -12.0f) right_motor_output  = -12.0f;
+    // if (left_motor_pid.setpoint  > RACE_MANAGER_MAX_ROBOT_SPEED_MPS)  left_motor_pid.setpoint  =  RACE_MANAGER_MAX_ROBOT_SPEED_MPS;
+    // if (left_motor_pid.setpoint  < -RACE_MANAGER_MAX_ROBOT_SPEED_MPS) left_motor_pid.setpoint  = -RACE_MANAGER_MAX_ROBOT_SPEED_MPS;
+    // if (right_motor_pid.setpoint > RACE_MANAGER_MAX_ROBOT_SPEED_MPS)  right_motor_pid.setpoint =  RACE_MANAGER_MAX_ROBOT_SPEED_MPS;
+    // if (right_motor_pid.setpoint < -RACE_MANAGER_MAX_ROBOT_SPEED_MPS) right_motor_pid.setpoint = -RACE_MANAGER_MAX_ROBOT_SPEED_MPS;
 
-    pid_compute(&left_motor_pid);
-    pid_compute(&right_motor_pid);
+    // pid_compute(&left_motor_pid);
+    // pid_compute(&right_motor_pid);
 
-    motor_set_voltage(MOTOR_LEFT, left_motor_pid.output);
-    motor_set_voltage(MOTOR_RIGHT, right_motor_pid.output);
+    motor_set_voltage(MOTOR_LEFT, left_motor_output);
+    motor_set_voltage(MOTOR_RIGHT, right_motor_output);
     
     // A. Check for Disaster (Global Override)
     if (line_data.position.robot_lost == true && 
@@ -125,7 +131,9 @@ static void race_manager_cb(void *arg) {
                 
                 race_status = RACE_STATUS_RACING;
                 current_acceleration_mps2 = RACE_MANAGER_DEFAULT_ROBOT_ACCELERATION_MPS2;
-                target_straightline_speed_mps  = configured_straightline_speed_mps; 
+
+                left_motor_pid.min_output  = -12.0f;
+                right_motor_pid.min_output = -12.0f;
 
                 raven_comm_send_message(TAG, "Start line crossed. Accelerating to %.1f m/s.", 
                                         target_straightline_speed_mps);
@@ -179,8 +187,8 @@ void race_manager_init(void) {
         esp_timer_create(&timer_args, &race_timer_handle);
     }
 
-    line_position_pid.max_output =  2.0f * RACE_MANAGER_MAX_ROBOT_SPEED_MPS;
-    line_position_pid.min_output = -2.0f * RACE_MANAGER_MAX_ROBOT_SPEED_MPS;
+    line_position_pid.max_output =  200.0f;
+    line_position_pid.min_output = -200.0f;
 
     RAVEN_LOGI(TAG, "Initialized successfully.");
 }
@@ -192,13 +200,16 @@ void set_target_straightline_speed(float given_speed_mps) {
 void race_manager_start(void) {
     if (is_timer_running) return;
 
+    odometry_reset();
     current_straightline_speed_mps = 0.0f;
-    target_straightline_speed_mps = 0.8;
+    target_straightline_speed_mps  = configured_straightline_speed_mps; 
     current_acceleration_mps2      = RACE_MANAGER_DEFAULT_ROBOT_ACCELERATION_MPS2;
     race_start_time_us             = 0;
     race_status                    = RACE_STATUS_PRE_START_ZONE;
 
-    line_position_pid.last_run_time_us = esp_timer_get_time();
+    // left_motor_pid.min_output = 0.0f;
+    // right_motor_pid.min_output = 0.0f;
+    // line_position_pid.last_run_time_us = esp_timer_get_time();
 
     esp_timer_start_periodic(race_timer_handle, RACE_MANAGER_REFRESH_RATE_MS * 1000);
     is_timer_running = true;

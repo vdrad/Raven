@@ -28,12 +28,12 @@
 
 /* --- GLOBAL PID INSTANCES --- */
 pid_context_t line_position_pid = {
-    .kP                 = 42.0f,      
+    .kP                 = 0.384f,      
     .kI                 = 0.0f,           
-    .kD                 = 0.25f,               
+    .kD                 = 0.00384f,               
     .bias               = 0.0f,             
 
-    .ff_coef            = 0.0,
+    .ff_coef            = 0.0f,
     .ff_bias            = 0.0f,
 
     .tm                 = 0.0f,
@@ -65,8 +65,8 @@ pid_context_t right_motor_pid = {
     .integral_sum       = 0.0f,
     .max_integral_sum   = 0.08f,
 
-    .max_output         =  BATTERY_MONITORING_HIGH_VOLTAGE,      
-    .min_output         = -BATTERY_MONITORING_HIGH_VOLTAGE,           
+    .max_output         =  12.0f,      
+    .min_output         = -12.0f,           
 };
 
 pid_context_t left_motor_pid = {
@@ -86,8 +86,8 @@ pid_context_t left_motor_pid = {
     .integral_sum       = 0.0f,
     .max_integral_sum   = 0.08f,
 
-    .max_output         =  BATTERY_MONITORING_HIGH_VOLTAGE,      
-    .min_output         = -BATTERY_MONITORING_HIGH_VOLTAGE,           
+    .max_output         =  12.0f,      
+    .min_output         = -12.0f,           
 };
 
 /**
