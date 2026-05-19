@@ -191,7 +191,7 @@ void battery_sensor_init(void) {
     xTaskCreatePinnedToCore(battery_sensor_task, "battery_sensor", 2048, NULL, 5, NULL, 1);
 
     RAVEN_LOGI(TAG, "Initialized successfully.");
-    raven_comm_send_message(TAG, "Battery Voltage: %.1fV", voltage_reading);
+    raven_comm_send_message(TAG, "Battery Voltage: %.1fV | Status: %s", voltage_reading, battery_status_text[battery_status]);
     notify_battery_level();
     initialized = true;
 }
