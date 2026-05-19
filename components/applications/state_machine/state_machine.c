@@ -85,7 +85,7 @@ typedef enum {
 static const notification_config_t NOTIFY_PROFILE_ARMED_STATE = {
     NOTIFY_PATTERN_SWEEP_TO_EDGES_SINGLE, 
     COLOR_PURPLE, 
-    NOTE_A4, 
+    NOTE_REST, 
     80, 
     1, 
     false,
