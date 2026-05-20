@@ -28,8 +28,8 @@
 /* ========================================================================== */
 
 /* --- ODOMETRY FILTER CONFIGURATION --- */
-#define USE_EMA_FILTER 1          // Set to 1 to enable EMA filter, 0 to bypass it
-#define ODOMETRY_EMA_ALPHA 0.1f   // Smoothing factor: 0.0 (ignore new) to 1.0 (no smoothing)
+#define USE_EMA_FILTER 0          // Set to 1 to enable EMA filter, 0 to bypass it
+#define ODOMETRY_EMA_ALPHA 1.0f   // Smoothing factor: 0.0 (ignore new) to 1.0 (no smoothing)
 
 /* --- MECHANICAL CONSTANTS --- */
 #define ENCODER_GEAR_TEETH  24.0f
