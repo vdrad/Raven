@@ -49,15 +49,15 @@ pid_context_t line_position_pid = {
 };
 
 pid_context_t right_motor_pid = {
-    .kP                 = 13.3741f,      
-    .kI                 = 478.6371f,           
+    .kP                 = 6.3103f,      
+    .kI                 = 194.9944f,           
     .kD                 = 0.0f,               
     .bias               = 0.0f,             
 
-    .ff_coef            = 0.9807f,
-    .ff_bias            = 0.2225f,
+    .ff_coef            = 0.9998f,
+    .ff_bias            = 0.2382f,
 
-    .tm                 = 0.2196f,
+    .tm                 = 0.1371f,
 
     .setpoint           = 0.5f,        
     .current_reading    = 0.0f,  
@@ -70,15 +70,15 @@ pid_context_t right_motor_pid = {
 };
 
 pid_context_t left_motor_pid = {
-    .kP                 = 12.3520f,               
-    .kI                 = 445.3294f,               
+    .kP                 = 5.6357f,               
+    .kI                 = 176.9677f,               
     .kD                 = 0.0f,               
     .bias               = 0.0f,             
 
-    .ff_coef            = 1.0039f,
-    .ff_bias            = 0.0846f,
+    .ff_coef            = 0.9986f,
+    .ff_bias            = 0.2178f,
 
-    .tm                 = 0.1996f,
+    .tm                 = 0.1246f,
 
     .setpoint           = 0.5f,        
     .current_reading    = 0.0f,  
